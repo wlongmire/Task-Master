@@ -1,4 +1,4 @@
-const CACHE = 'productivity-v1';
+const CACHE = 'taskmaster-v1';
 
 self.addEventListener('install', event => {
   event.waitUntil(
