@@ -99,8 +99,8 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .sidebar-footer-btn:hover { color: var(--text); }
 
 /* ── MAIN ── */
-.main { margin-left: var(--sidebar-w); height: 100vh; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; flex: 1; }
-.content { width: 100%; padding: 0 52px 400px; }
+.main { margin-left: var(--sidebar-w); height: 100vh; display: flex; flex-direction: column; overflow: hidden; flex: 1; }
+.sections-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; padding: 0 52px 400px; position: relative; }
 
 /* ── SECTIONS ── */
 .section { border-bottom: 1px solid var(--border); padding: 36px 0 32px; }
@@ -283,7 +283,33 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 @media (max-width: 700px) {
   .sidebar { display: none; }
   .main { margin-left: 0; }
+  .briefing { padding: 32px 24px 28px; }
+  .sections-scroll { padding-left: 24px; padding-right: 24px; }
   .task-urgent-badge { display: none; }
+}
+
+@media (max-width: 900px) {
+  .outliner-row { flex-wrap: wrap; }
+  .outliner-row-actions {
+    opacity: 1;
+    flex-basis: 100%;
+    padding-left: 23px;
+    padding-top: 2px;
+    padding-bottom: 4px;
+  }
+  .completed-item { flex-wrap: wrap; }
+  .completed-actions {
+    opacity: 1;
+    flex-basis: 100%;
+    padding-left: 24px;
+  }
+  .wf-event { flex-wrap: wrap; }
+  .wf-event-actions {
+    opacity: 1;
+    flex-basis: 100%;
+    margin-top: 6px;
+    padding-left: 50px;
+  }
 }
 .outliner-action.urgent-on { color: var(--red); border-color: var(--red); }
 .outliner-row.is-urgent { background: oklch(65% 0.14 22 / 0.12); border-radius: 4px; }
@@ -303,7 +329,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .outliner-row:hover .outliner-notes-preview { display: block; }
 
 /* ── DAILY BRIEFING ── */
-.briefing { padding: 44px 0 36px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 5; }
+.briefing { padding: 44px 52px 36px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
 .briefing-greeting { font-family: var(--font-ui); font-size: 38px; font-weight: 600; color: var(--accent); letter-spacing: -0.03em; margin-bottom: 24px; }
 .briefing-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .briefing-otd { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; }
@@ -361,8 +387,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   </aside>
 
   <!-- ── MAIN ── -->
-  <main class="main" id="main-scroll">
-    <div class="content">
+  <main class="main">
 
       <!-- 00 DAILY BRIEFING -->
       <div class="briefing" id="s-briefing">
@@ -404,6 +429,8 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
           </div>
         </div>
       </div>
+
+      <div class="sections-scroll" id="sections-scroll">
 
       <!-- 01 GRATEFUL -->
       <div class="section" id="s-grateful">
@@ -545,7 +572,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
         </div>
       </div>
 
-    </div><!-- /content -->
+      </div><!-- /sections-scroll -->
   </main>
 
 </div><!-- /app -->
@@ -1466,6 +1493,18 @@ function initTaskDelegation(containerId, listState) {
       return;
     }
 
+    // Add task input: Backspace on empty focuses the last task in the same category group
+    if (target.classList.contains('add-task-input') && e.key === 'Backspace' && !target.value) {
+      e.preventDefault();
+      let sibling = target.closest('.outliner-row')?.previousElementSibling;
+      while (sibling && !sibling.classList.contains('is-category-row')) {
+        const inp = sibling.querySelector('.outliner-input[data-id]');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); break; }
+        sibling = sibling.previousElementSibling;
+      }
+      return;
+    }
+
     // Add task input: Enter creates a task under the given category
     if (target.classList.contains('add-task-input') && e.key === 'Enter') {
       e.preventDefault();
@@ -1489,6 +1528,17 @@ function initTaskDelegation(containerId, listState) {
       if (!name) return;
       DB.addCategory(name);
       renderAllTaskSections();
+      return;
+    }
+
+    // Cmd+Up/Down: navigate between tasks, category headers, and add-task rows
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.metaKey && !e.shiftKey &&
+        target.classList.contains('outliner-input')) {
+      e.preventDefault();
+      const allInputs = Array.from(container.querySelectorAll('.outliner-input'));
+      const idx = allInputs.indexOf(target);
+      const next = e.key === 'ArrowDown' ? allInputs[idx + 1] : allInputs[idx - 1];
+      if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
       return;
     }
 
@@ -1547,8 +1597,15 @@ function initTaskDelegation(containerId, listState) {
 
       if (e.key === 'Backspace' && !target.value) {
         e.preventDefault();
+        const allInputs = Array.from(container.querySelectorAll('.outliner-input[data-id]'));
+        const idx = allInputs.indexOf(target);
+        const prevId = idx > 0 ? allInputs[idx - 1].dataset.id : null;
         DB.archiveTask(id);
         renderSection(listState);
+        if (prevId) setTimeout(() => {
+          const prev = container.querySelector(`.outliner-input[data-id="${prevId}"]`);
+          if (prev) { prev.focus(); prev.setSelectionRange(prev.value.length, prev.value.length); }
+        }, 0);
         return;
       }
 
@@ -1754,8 +1811,8 @@ function initArchive() {
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
 function initNav() {
-  const mainEl = document.getElementById('main-scroll');
-  const sectionIds = ['s-briefing','s-grateful','s-wants','s-nextup','s-todo','s-inprogress','s-completed','s-events'];
+  const mainEl = document.getElementById('sections-scroll');
+  const sectionIds = ['s-grateful','s-wants','s-nextup','s-todo','s-inprogress','s-completed','s-events'];
 
   mainEl.addEventListener('scroll', () => {
     const scrollY = mainEl.scrollTop;
