@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tasksmaster 1.0</title>
+
+<!-- Web app / dock integration -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="tasksmaster 1.0">
+<meta name="application-name" content="Productivity">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e0e0d;
+  --surface: #161614;
+  --surface2: #1e1e1c;
+  --surface3: #252523;
+  --border: #2a2a28;
+  --border2: #3a3a38;
+  --text: #eeebe4;
+  --text-dim: #7a7870;
+  --text-dimmer: #484642;
+  --accent: oklch(72% 0.14 290);
+  --accent-dim: oklch(28% 0.08 290);
+  --accent-fg: oklch(96% 0.02 290);
+  --red: oklch(65% 0.14 22);
+  --green: oklch(62% 0.14 155);
+  --sidebar-w: 240px;
+  --font-ui: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --radius: 5px;
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 14px; line-height: 1.5; }
+
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  position: fixed; top: 0; left: 0;
+  width: var(--sidebar-w); height: 100vh;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto; z-index: 10;
+}
+.sidebar-logo { padding: 22px 18px 6px; font-family: var(--font-mono); font-size: 9px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: #6a6660; }
+.sidebar-date {
+  padding: 4px 18px 12px; font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  color: var(--accent); display: flex; align-items: center; gap: 6px;
+}
+.sidebar-date-text { flex: 1; }
+.day-nav-btn {
+  width: 20px; height: 20px; display: grid; place-items: center; font-size: 11px;
+  color: #6a6660; cursor: pointer; border-radius: 3px; flex-shrink: 0; border: 1px solid transparent;
+}
+.day-nav-btn:hover { background: var(--surface2); color: #9a9690; border-color: var(--border); }
+
+/* ── MINI CALENDAR ── */
+.mini-cal { margin: 0 12px 14px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); padding: 10px 10px 8px; }
+.mini-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.mini-cal-month { font-family: var(--font-mono); font-size: 9px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8680; }
+.mini-cal-nav { display: flex; gap: 2px; }
+.mini-cal-nav-btn { width: 16px; height: 16px; display: grid; place-items: center; font-size: 9px; color: #6a6660; cursor: pointer; border-radius: 3px; }
+.mini-cal-nav-btn:hover { background: var(--surface3); color: #9a9690; }
+.mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.mini-cal-dow { font-family: var(--font-mono); font-size: 7px; text-align: center; color: #555250; padding-bottom: 4px; letter-spacing: 0.06em; }
+.mini-cal-day { font-family: var(--font-mono); font-size: 9px; text-align: center; padding: 3px 1px; border-radius: 3px; color: #7a7870; cursor: pointer; line-height: 1; }
+.mini-cal-day:hover { background: var(--surface3); color: #eeebe4; }
+.mini-cal-day.today { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.mini-cal-day.has-event { position: relative; }
+.mini-cal-day.has-event::after { content: ''; display: block; width: 3px; height: 3px; border-radius: 50%; background: var(--accent); margin: 1px auto 0; }
+.mini-cal-day.today.has-event::after { background: var(--accent-fg); }
+.mini-cal-day.other-month { color: #333230; }
+.mini-cal-day.selected-day { outline: 1px solid var(--accent); }
+
+/* ── NAV ── */
+.nav-group-label { padding: 14px 18px 5px; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: #666360; font-weight: 500; }
+.nav-group-label.first { border-top: 1px solid var(--border); padding-top: 14px; }
+
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 6px 18px; cursor: pointer; font-family: var(--font-ui); font-size: 13px; font-weight: 400; color: #9a9690; border-left: 2px solid transparent; text-decoration: none; transition: all 0.1s; user-select: none; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { color: var(--text); border-left-color: var(--accent); background: var(--surface2); font-weight: 500; }
+.nav-dot { width: 5px; height: 5px; border: 1.5px solid #6a6660; border-radius: 50%; flex-shrink: 0; }
+.nav-item:hover .nav-dot { border-color: #9a9690; }
+.nav-item.active .nav-dot { border-color: var(--accent); background: var(--accent); }
+.nav-badge { margin-left: auto; font-family: var(--font-mono); font-size: 9px; color: #6a6660; }
+.nav-item:hover .nav-badge { color: #9a9690; }
+.nav-item.active .nav-badge { color: var(--accent); }
+
+.sidebar-footer { margin-top: auto; padding: 12px 18px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; }
+.sidebar-footer-btn { font-family: var(--font-ui); font-size: 12px; color: #8a8680; cursor: pointer; padding: 5px 0; user-select: none; }
+.sidebar-footer-btn:hover { color: var(--text); }
+
+/* ── MAIN ── */
+.main { margin-left: var(--sidebar-w); height: 100vh; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; flex: 1; }
+.content { width: 100%; padding: 0 52px 400px; }
+
+/* ── SECTIONS ── */
+.section { border-bottom: 1px solid var(--border); padding: 36px 0 32px; }
+.section:last-child { border-bottom: none; }
+.section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+.section-num { font-family: var(--font-mono); font-size: 9px; color: #6a6660; letter-spacing: 0.1em; font-weight: 500; flex-shrink: 0; }
+.section-title { font-family: var(--font-ui); font-size: 20px; font-weight: 600; color: var(--accent); letter-spacing: -0.02em; line-height: 1; }
+.section-subtitle { font-family: var(--font-mono); font-size: 9px; color: #6a6660; letter-spacing: 0.06em; margin-left: 2px; }
+.section-header-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+
+/* ── BUTTONS ── */
+.wf-btn { font-family: var(--font-ui); font-size: 12px; font-weight: 500; padding: 5px 11px; border: 1px solid var(--border2); border-radius: var(--radius); background: transparent; color: var(--text-dim); cursor: pointer; }
+.wf-btn:hover { border-color: var(--text-dim); color: var(--text); background: var(--surface2); }
+.wf-btn.primary { border-color: var(--accent); color: var(--accent-fg); background: var(--accent); }
+.wf-btn.primary:hover { opacity: 0.85; }
+.wf-btn.ghost { border-color: transparent; color: #8a8680; }
+.wf-btn.ghost:hover { color: var(--text-dim); background: var(--surface2); border-color: transparent; }
+
+/* ── NOTEBOOK ── */
+.notebook { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 28px 40px 24px; }
+.notebook-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 12px; font-weight: 500; }
+.notebook textarea { width: 100%; background: transparent; border: none; outline: none; resize: none; font-family: Georgia, 'Times New Roman', serif; font-size: 16px; line-height: 1.85; color: var(--text); min-height: 100px; display: block; }
+.notebook textarea::placeholder { color: var(--text-dimmer); }
+.notebook-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.notebook-hint { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); letter-spacing: 0.06em; }
+.notebook-archive-btn { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); border: 1px solid var(--border2); border-radius: 3px; padding: 3px 9px; cursor: pointer; user-select: none; }
+.notebook-archive-btn:hover { color: var(--text); border-color: var(--border2); }
+
+/* ── OUTLINER CARD ── */
+.outliner-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 20px 28px 16px; }
+.outliner { display: flex; flex-direction: column; }
+
+.outliner-row { display: flex; align-items: flex-start; gap: 0; position: relative; min-height: 32px; }
+.outliner-row[data-depth="1"] { padding-left: 24px; }
+.outliner-row[data-depth="2"] { padding-left: 48px; }
+.outliner-row[data-depth="3"] { padding-left: 72px; }
+.outliner-row[data-depth="4"] { padding-left: 96px; }
+
+.outliner-row[data-depth="1"]::before { content: ''; position: absolute; left: 10px; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+.outliner-row[data-depth="2"]::before { content: ''; position: absolute; left: 34px; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+.outliner-row[data-depth="3"]::before { content: ''; position: absolute; left: 58px; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+.outliner-row[data-depth="4"]::before { content: ''; position: absolute; left: 82px; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+
+.outliner-check { width: 15px; height: 15px; border: 1.5px solid var(--border2); border-radius: 3px; flex-shrink: 0; margin-top: 8px; cursor: pointer; transition: border-color 0.1s; }
+.outliner-check:hover { border-color: var(--text-dim); }
+.outliner-check.done { border-color: var(--green); background: var(--green); }
+.outliner-check.invisible { opacity: 0; pointer-events: none; }
+
+.outliner-input-wrap { flex: 1; display: flex; flex-direction: column; padding: 4px 6px 4px 8px; border-radius: 4px; min-width: 0; }
+.outliner-input-wrap:focus-within { background: var(--surface3); }
+
+.outliner-input { width: 100%; background: transparent; border: none; outline: none; font-family: var(--font-ui); font-size: 14px; color: var(--text); line-height: 1.5; caret-color: var(--accent); }
+.outliner-input::placeholder { color: var(--text-dimmer); }
+.outliner-input.is-category { font-weight: 700; font-size: 13px; color: var(--text); letter-spacing: -0.01em; }
+.outliner-input.is-done { color: var(--text-dimmer); text-decoration: line-through; }
+
+.outliner-input-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); margin-top: 1px; letter-spacing: 0.04em; display: none; }
+.outliner-input-wrap:focus-within .outliner-input-meta,
+.outliner-row:hover .outliner-input-meta { display: block; }
+
+.outliner-row-actions { display: flex; gap: 4px; align-items: center; opacity: 0; padding-top: 6px; flex-shrink: 0; transition: opacity 0.1s; }
+.outliner-row:hover .outliner-row-actions { opacity: 1; }
+.outliner-action { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); border: 1px solid var(--border2); border-radius: 2px; padding: 2px 6px; cursor: pointer; white-space: nowrap; user-select: none; }
+.outliner-action:hover { color: var(--text); border-color: var(--border2); background: var(--surface3); }
+.outliner-action.go { border-color: var(--accent-dim); color: var(--accent); }
+.outliner-action.go:hover { background: var(--accent-dim); }
+
+.outliner-row.is-category-row { margin-top: 12px; }
+.outliner-row.is-category-row:first-child { margin-top: 0; }
+
+.cat-chevron { font-size: 9px; color: var(--text-dimmer); width: 14px; flex-shrink: 0; margin-top: 8px; cursor: pointer; user-select: none; transition: transform 0.15s; text-align: center; }
+.outliner-row.cat-collapsed .cat-chevron { transform: rotate(-90deg); }
+
+.outliner-hint { font-family: var(--font-mono); font-size: 9px; color: #6a6660; padding: 8px 2px 0; letter-spacing: 0.04em; display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+.hint-key { display: inline-flex; align-items: center; gap: 4px; }
+.hint-kbd { background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-size: 8px; color: #8a8680; }
+
+/* ── TAG ── */
+.wf-tag { font-family: var(--font-mono); font-size: 8px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border-radius: 2px; flex-shrink: 0; margin-top: 6px; }
+.wf-tag.urgent { background: #fff0ee; border: 1px solid #f5a0a0; color: #c44; }
+
+/* ── ADD ROW ── */
+.add-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; cursor: pointer; border-radius: var(--radius); opacity: 0.3; transition: opacity 0.12s; user-select: none; }
+.add-row:hover { opacity: 0.7; background: var(--surface2); }
+.add-plus { font-family: var(--font-mono); font-size: 12px; color: var(--accent); width: 14px; text-align: center; }
+.add-label { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); }
+
+/* ── COMPLETED ── */
+.completed-date { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-dimmer); padding: 14px 0 4px; font-weight: 500; }
+.completed-date:first-child { padding-top: 0; }
+.completed-date-group.collapsed .completed-group-items { display: none; }
+.completed-date-toggle { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.completed-date-toggle:hover { color: var(--text-dim); }
+.completed-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--radius); }
+.completed-item:hover { background: var(--surface); }
+.completed-check { width: 14px; height: 14px; border: 1.5px solid var(--green); background: var(--green); border-radius: 3px; flex-shrink: 0; }
+.completed-title { font-family: var(--font-ui); font-size: 14px; color: var(--text-dimmer); text-decoration: line-through; flex: 1; }
+.completed-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); white-space: nowrap; }
+.completed-actions { display: flex; gap: 4px; opacity: 0; flex-shrink: 0; }
+.completed-item:hover .completed-actions { opacity: 1; }
+
+/* ── EVENTS ── */
+.wf-event { display: flex; align-items: flex-start; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-bottom: 6px; transition: border-color 0.1s; }
+.wf-event:hover { border-color: var(--border2); background: var(--surface2); }
+.wf-event.is-past { opacity: 0.4; }
+.wf-event-date { display: flex; flex-direction: column; align-items: center; min-width: 36px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 4px 6px; flex-shrink: 0; }
+.wf-event-month { font-family: var(--font-mono); font-size: 7px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 500; }
+.wf-event-day { font-family: var(--font-ui); font-size: 20px; font-weight: 600; color: var(--text); line-height: 1.1; letter-spacing: -0.02em; }
+.wf-event-body { flex: 1; }
+.wf-event-name { font-family: var(--font-ui); font-size: 14px; font-weight: 500; color: var(--text); }
+.wf-event-name.done { text-decoration: line-through; color: var(--text-dim); }
+.wf-event-countdown { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); margin-top: 2px; letter-spacing: 0.05em; }
+.wf-event-notes { font-family: var(--font-ui); font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+.wf-event-check { width: 15px; height: 15px; border: 1.5px solid var(--border2); border-radius: 50%; flex-shrink: 0; margin-top: 3px; cursor: pointer; transition: all 0.1s; }
+.wf-event-check:hover { border-color: var(--green); }
+.wf-event-check.done { border-color: var(--green); background: var(--green); }
+.wf-event-actions { display: flex; gap: 4px; opacity: 0; flex-shrink: 0; margin-top: 3px; }
+.wf-event:hover .wf-event-actions { opacity: 1; }
+
+/* ── EVENT FORM ── */
+.event-form { border: 1px solid var(--border2); border-radius: var(--radius); padding: 16px; background: var(--surface2); margin-bottom: 8px; display: none; }
+.event-form.open { display: block; }
+.event-form-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.event-form-row:last-child { margin-bottom: 0; }
+.event-input { flex: 1; background: var(--surface3); border: 1px solid var(--border2); border-radius: 4px; padding: 7px 10px; font-family: var(--font-ui); font-size: 13px; color: var(--text); outline: none; }
+.event-input:focus { border-color: var(--accent); }
+.event-input::placeholder { color: var(--text-dimmer); }
+.event-input[type="date"] { color-scheme: dark; flex: 0 0 auto; width: 148px; }
+.event-form-btns { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* ── ARCHIVE OVERLAY ── */
+.archive-overlay { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 340px; background: var(--surface); border-left: 1px solid var(--border2); z-index: 200; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.5); }
+.archive-overlay.open { display: flex; }
+.archive-hd { padding: 22px 24px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; flex-shrink: 0; }
+.archive-title { font-family: var(--font-ui); font-size: 15px; font-weight: 600; color: var(--text); }
+.archive-section-tabs { display: flex; gap: 0; padding: 0 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.archive-tab { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dimmer); cursor: pointer; padding: 10px 12px 9px; border-bottom: 2px solid transparent; user-select: none; }
+.archive-tab:hover { color: var(--text-dim); }
+.archive-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.archive-close { margin-left: auto; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dimmer); cursor: pointer; border: 1px solid var(--border2); border-radius: 2px; padding: 3px 8px; }
+.archive-close:hover { color: var(--text); border-color: var(--border2); }
+.archive-body { padding: 20px 24px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.archive-group-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 8px; font-weight: 500; }
+.archive-entry { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); padding: 5px 0; border-bottom: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; }
+.archive-entry:last-child { border-bottom: none; }
+.archive-entry-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); margin-top: 2px; }
+.archive-empty { font-family: var(--font-ui); font-size: 13px; color: var(--text-dimmer); font-style: italic; }
+
+/* ── ADD CATEGORY ROW (inside dark card) ── */
+.add-cat-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px 2px; margin-top: 6px; border-top: 1px solid var(--border); }
+.add-cat-plus { font-family: var(--font-mono); font-size: 11px; color: var(--text-dimmer); width: 14px; text-align: center; flex-shrink: 0; }
+.add-cat-input { flex: 1; background: transparent; border: none; outline: none; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em; }
+.add-cat-input::placeholder { color: var(--text-dimmer); }
+.cat-label-badge { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); background: var(--surface3); border: 1px solid var(--border2); border-radius: 2px; padding: 1px 5px; flex-shrink: 0; margin-top: 6px; }
+
+/* ── SECTION COLLAPSE ── */
+.section-header { cursor: pointer; user-select: none; }
+.section-chevron { font-size: 10px; color: var(--text-dimmer); transition: transform 0.2s; flex-shrink: 0; line-height: 1; align-self: center; }
+.section.collapsed .section-chevron { transform: rotate(-90deg); }
+.section.collapsed > *:not(.section-header) { display: none; }
+.section.collapsed .section-header { margin-bottom: 0; }
+
+@keyframes rowFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-expanding .outliner-row {
+  opacity: 0;
+  animation: rowFadeIn 0.18s ease forwards;
+  animation-delay: calc(var(--row-i, 0) * 35ms);
+}
+
+/* ── TASK DETAIL EXPAND ── */
+.outliner-task-line { display: flex; align-items: center; }
+.outliner-task-line .outliner-input { flex: 1; }
+.task-due-badge { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); background: var(--surface3); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; margin-left: 8px; white-space: nowrap; flex-shrink: 0; }
+.task-due-badge.overdue { color: var(--red); border-color: var(--red); }
+.task-due-badge.due-today { color: var(--accent); border-color: var(--accent-dim); }
+.task-urgent-badge { font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: var(--red); border: 1px solid var(--red); border-radius: 2px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; letter-spacing: 0.06em; display: inline-block; margin-top: 3px; }
+@media (max-width: 700px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; }
+  .task-urgent-badge { display: none; }
+}
+.outliner-action.urgent-on { color: var(--red); border-color: var(--red); }
+.outliner-row.is-urgent { background: oklch(65% 0.14 22 / 0.12); border-radius: 4px; }
+
+.task-detail { margin-top: 6px; padding: 10px; border-radius: 6px; background: var(--accent); display: flex; flex-direction: column; gap: 8px; }
+.task-notes { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 7px 9px; font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); line-height: 1.5; resize: none; outline: none; min-height: 56px; }
+.task-notes:focus { border-color: var(--accent); color: var(--text); }
+.task-notes::placeholder { color: var(--text-dimmer); }
+.task-detail-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.task-detail-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); letter-spacing: 0.08em; text-transform: uppercase; flex-shrink: 0; }
+.task-due-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 4px 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); outline: none; color-scheme: dark; }
+.task-due-input:focus { border-color: var(--accent); color: var(--text); }
+.task-detail-clear { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); cursor: pointer; padding: 2px 6px; border: 1px solid transparent; border-radius: 2px; }
+.task-detail-clear:hover { color: var(--text); border-color: var(--border2); }
+
+.outliner-notes-preview { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); margin-top: 2px; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: none; }
+.outliner-row:hover .outliner-notes-preview { display: block; }
+
+/* ── DAILY BRIEFING ── */
+.briefing { padding: 44px 0 36px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 5; }
+.briefing-greeting { font-family: var(--font-ui); font-size: 38px; font-weight: 600; color: var(--accent); letter-spacing: -0.03em; margin-bottom: 24px; }
+.briefing-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+.briefing-otd { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; }
+.briefing-otd:first-of-type { margin-top: 0; }
+.briefing-otd-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); flex-shrink: 0; padding-top: 2px; width: 90px; }
+.briefing-otd-body { flex: 1; }
+.briefing-otd-year { font-family: var(--font-mono); font-size: 10px; color: var(--text-dimmer); margin-bottom: 3px; letter-spacing: 0.06em; }
+.briefing-otd-text { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">tasksmaster 1.0</div>
+    <div class="sidebar-date">
+      <div class="day-nav-btn" id="btn-prev-day" title="Previous day">‹</div>
+      <div class="sidebar-date-text" id="sidebar-date-text"></div>
+      <div class="day-nav-btn" id="btn-next-day" title="Next day">›</div>
+    </div>
+
+    <div class="mini-cal" id="mini-cal">
+      <div class="mini-cal-header">
+        <span class="mini-cal-month" id="cal-month-label"></span>
+        <div class="mini-cal-nav">
+          <div class="mini-cal-nav-btn" id="cal-prev">‹</div>
+          <div class="mini-cal-nav-btn" id="cal-next">›</div>
+        </div>
+      </div>
+      <div class="mini-cal-grid" id="cal-grid"></div>
+    </div>
+
+    <div class="nav-group-label first">Daily</div>
+    <a class="nav-item" href="#s-grateful" data-section="s-grateful"><div class="nav-dot"></div> Grateful</a>
+    <a class="nav-item" href="#s-wants" data-section="s-wants"><div class="nav-dot"></div> Wants</a>
+
+    <div class="nav-group-label">Tasks</div>
+    <a class="nav-item" href="#s-nextup" data-section="s-nextup"><div class="nav-dot"></div> Next Up <span class="nav-badge" id="badge-nextup">0</span></a>
+    <a class="nav-item" href="#s-todo" data-section="s-todo"><div class="nav-dot"></div> To Do <span class="nav-badge" id="badge-todo">0</span></a>
+    <a class="nav-item" href="#s-inprogress" data-section="s-inprogress"><div class="nav-dot"></div> In Progress <span class="nav-badge" id="badge-inprogress">0</span></a>
+    <a class="nav-item" href="#s-completed" data-section="s-completed"><div class="nav-dot"></div> Completed <span class="nav-badge" id="badge-completed">0</span></a>
+
+    <div class="nav-group-label">Upcoming</div>
+    <a class="nav-item" href="#s-events" data-section="s-events"><div class="nav-dot"></div> Upcoming Gigs <span class="nav-badge" id="badge-events">0</span></a>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-btn" id="btn-archive">⊡ Archive</div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main" id="main-scroll">
+    <div class="content">
+
+      <!-- 00 DAILY BRIEFING -->
+      <div class="briefing" id="s-briefing">
+        <div class="briefing-greeting" id="briefing-greeting"></div>
+        <div class="briefing-otd">
+          <div class="briefing-otd-label">Quote</div>
+          <div class="briefing-otd-body">
+            <div class="briefing-otd-text" id="briefing-quote"></div>
+            <div class="briefing-otd-year" id="briefing-author" style="margin-top:5px"></div>
+          </div>
+        </div>
+        <hr class="briefing-divider">
+        <div class="briefing-otd">
+          <div class="briefing-otd-label">On This Day</div>
+          <div class="briefing-otd-body">
+            <div class="briefing-otd-year" id="otd-year"></div>
+            <div class="briefing-otd-text" id="otd-text">Loading…</div>
+          </div>
+        </div>
+        <div class="briefing-otd" id="briefing-gig" style="display:none">
+          <div class="briefing-otd-label">Next Gig</div>
+          <div class="briefing-otd-body">
+            <div class="briefing-otd-year" id="briefing-gig-countdown"></div>
+            <div class="briefing-otd-text" id="briefing-gig-name"></div>
+          </div>
+        </div>
+        <div class="briefing-otd" id="briefing-urgent" style="display:none">
+          <div class="briefing-otd-label">Next Urgent</div>
+          <div class="briefing-otd-body">
+            <div class="briefing-otd-year" id="briefing-urgent-state"></div>
+            <div class="briefing-otd-text" id="briefing-urgent-name"></div>
+          </div>
+        </div>
+        <div class="briefing-otd" id="briefing-deadline" style="display:none">
+          <div class="briefing-otd-label">Next Deadline</div>
+          <div class="briefing-otd-body">
+            <div class="briefing-otd-year" id="briefing-deadline-due"></div>
+            <div class="briefing-otd-text" id="briefing-deadline-name"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 01 GRATEFUL -->
+      <div class="section" id="s-grateful">
+        <div class="section-header">
+          <span class="section-num">01</span>
+          <span class="section-title">Grateful</span>
+          <span class="section-subtitle">· daily</span>
+          <div class="section-header-actions">
+            <div class="wf-btn ghost" id="btn-grateful-archive">Past days →</div>
+          </div>
+        </div>
+        <div class="notebook">
+          <div class="notebook-label">What are you thankful for today?</div>
+          <textarea id="grateful-textarea" placeholder="Write freely — one thing, or many..."></textarea>
+          <div class="notebook-footer">
+            <span class="notebook-hint" id="grateful-hint">Resets at midnight · previous days saved to archive</span>
+            <span class="notebook-archive-btn" id="btn-grateful-archive2">View past entries →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 02 WANTS -->
+      <div class="section" id="s-wants">
+        <div class="section-header">
+          <span class="section-num">02</span>
+          <span class="section-title">Wants</span>
+          <span class="section-subtitle">· persistent</span>
+          <div class="section-header-actions">
+            <div class="wf-btn ghost" id="btn-wants-archive">History →</div>
+          </div>
+        </div>
+        <div class="notebook">
+          <div class="notebook-label">Things I want — in any sense of the word</div>
+          <textarea id="wants-textarea" style="min-height:160px" placeholder="Material things, experiences, feelings, changes..."></textarea>
+          <div class="notebook-footer">
+            <span class="notebook-hint">Persists · edit anytime · versions saved to archive</span>
+            <span class="notebook-archive-btn" id="btn-wants-archive2">View history →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03 NEXT UP -->
+      <div class="section" id="s-nextup">
+        <div class="section-header">
+          <span class="section-num">03</span>
+          <span class="section-title">Next Up</span>
+          <span class="section-subtitle" id="nextup-subtitle">· 0 tasks</span>
+          <div class="section-header-actions">
+            <div class="wf-btn ghost" id="btn-nextup-archive">Archive</div>
+          </div>
+        </div>
+        <div class="outliner-card" id="nextup-card">
+          <div class="outliner" id="nextup-outliner"></div>
+        </div>
+        <div class="outliner-hint">
+          <span class="hint-key"><span class="hint-kbd">Enter</span> add task</span>
+          <span class="hint-key"><span class="hint-kbd">⌘↩</span> details</span>
+          <span class="hint-key"><span class="hint-kbd">⇧↑↓</span> reorder</span>
+          <span class="hint-key"><span class="hint-kbd">Backspace</span> remove empty</span>
+        </div>
+      </div>
+
+      <!-- 04 TO DO -->
+      <div class="section" id="s-todo">
+        <div class="section-header">
+          <span class="section-num">04</span>
+          <span class="section-title">To Do</span>
+          <span class="section-subtitle" id="todo-subtitle">· 0 tasks</span>
+          <div class="section-header-actions">
+            <div class="wf-btn ghost" id="btn-todo-archive">Archive</div>
+          </div>
+        </div>
+        <div class="outliner-card" id="todo-card">
+          <div class="outliner" id="todo-outliner"></div>
+        </div>
+        <div class="outliner-hint">
+          <span class="hint-key"><span class="hint-kbd">Enter</span> add task</span>
+          <span class="hint-key"><span class="hint-kbd">⌘↩</span> details</span>
+          <span class="hint-key"><span class="hint-kbd">⇧↑↓</span> reorder</span>
+          <span class="hint-key"><span class="hint-kbd">Backspace</span> remove empty</span>
+        </div>
+      </div>
+
+      <!-- 04 IN PROGRESS -->
+      <div class="section" id="s-inprogress">
+        <div class="section-header">
+          <span class="section-num">05</span>
+          <span class="section-title">In Progress</span>
+          <span class="section-subtitle" id="inprogress-subtitle">· 0 tasks</span>
+        </div>
+        <div class="outliner-card" id="inprogress-card">
+          <div class="outliner" id="inprogress-outliner"></div>
+        </div>
+        <div class="outliner-hint">
+          <span class="hint-key"><span class="hint-kbd">Enter</span> add task</span>
+          <span class="hint-key"><span class="hint-kbd">⌘↩</span> details</span>
+          <span class="hint-key"><span class="hint-kbd">⇧↑↓</span> reorder</span>
+          <span class="hint-key"><span class="hint-kbd">Backspace</span> remove empty</span>
+        </div>
+      </div>
+
+      <!-- 05 COMPLETED -->
+      <div class="section" id="s-completed">
+        <div class="section-header">
+          <span class="section-num">06</span>
+          <span class="section-title">Completed</span>
+          <span class="section-subtitle" id="completed-subtitle">· 0 total</span>
+        </div>
+        <div id="completed-list"></div>
+      </div>
+
+      <!-- 06 UPCOMING GIGS -->
+      <div class="section" id="s-events">
+        <div class="section-header">
+          <span class="section-num">07</span>
+          <span class="section-title">Upcoming Gigs</span>
+          <span class="section-subtitle" id="events-subtitle">· upcoming</span>
+          <div class="section-header-actions">
+            <button class="wf-btn primary" id="btn-add-event">+ Event</button>
+          </div>
+        </div>
+        <div class="event-form" id="event-form">
+          <div class="event-form-row">
+            <input class="event-input" id="event-name-input" placeholder="Event name..." type="text">
+            <input class="event-input" id="event-date-input" type="date">
+          </div>
+          <div class="event-form-row">
+            <input class="event-input" id="event-notes-input" placeholder="Notes (optional)..." type="text">
+          </div>
+          <div class="event-form-btns">
+            <button class="wf-btn ghost" id="btn-cancel-event">Cancel</button>
+            <button class="wf-btn primary" id="btn-save-event">Add Event</button>
+          </div>
+        </div>
+        <div id="events-list"></div>
+        <div class="add-row" id="add-event-row">
+          <div class="add-plus">+</div>
+          <div class="add-label">Add an event...</div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+
+</div><!-- /app -->
+
+<!-- ARCHIVE OVERLAY -->
+<div class="archive-overlay" id="archive-overlay">
+  <div class="archive-hd">
+    <div class="archive-title">Archive</div>
+    <div class="archive-close" id="btn-archive-close">✕ Close</div>
+  </div>
+  <div class="archive-section-tabs">
+    <div class="archive-tab active" data-tab="grateful">Grateful</div>
+    <div class="archive-tab" data-tab="wants">Wants</div>
+    <div class="archive-tab" data-tab="tasks">Tasks</div>
+  </div>
+  <div class="archive-body" id="archive-body"></div>
+</div>
+
+<script>
+// ─── DATA LAYER ───────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'productivity_v1';
+
+const DB = (() => {
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function save(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+  function dateKey(date) { return date.toISOString().slice(0, 10); }
+  function todayKey() { return dateKey(new Date()); }
+
+  function offsetDate(key, delta) {
+    const d = new Date(key + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    return dateKey(d);
+  }
+
+  function formatDateShort(key) {
+    const d = new Date(key + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  // ── Grateful ──
+  function getGrateful(dk) {
+    const data = load();
+    return (data.grateful && data.grateful[dk]) || { text: '' };
+  }
+  function setGrateful(dk, text) {
+    const data = load();
+    if (!data.grateful) data.grateful = {};
+    data.grateful[dk] = { text, savedAt: Date.now() };
+    save(data);
+  }
+  function getGratefulDays() {
+    const data = load();
+    if (!data.grateful) return [];
+    return Object.keys(data.grateful).filter(k => data.grateful[k].text).sort().reverse();
+  }
+
+  // ── Wants ──
+  function getWants() {
+    const data = load();
+    return data.wants || { text: '', history: [] };
+  }
+  function setWants(text) {
+    const data = load();
+    const prev = data.wants || { text: '', history: [] };
+    if (prev.text && prev.text !== text) {
+      prev.history = prev.history || [];
+      prev.history.unshift({ text: prev.text, savedAt: Date.now() });
+      if (prev.history.length > 50) prev.history = prev.history.slice(0, 50);
+    }
+    data.wants = { text, history: prev.history || [], savedAt: Date.now() };
+    save(data);
+  }
+
+  // ── Tasks ──
+  function genId() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+
+  function getTasks() {
+    const data = load();
+    return data.tasks || [];
+  }
+  function saveTasks(tasks) {
+    const data = load();
+    data.tasks = tasks;
+    save(data);
+  }
+  function addTask(task) {
+    const tasks = getTasks();
+    tasks.push({ id: genId(), dateCreated: Date.now(), archived: false, ...task });
+    saveTasks(tasks);
+    return tasks[tasks.length - 1];
+  }
+  function insertTaskAfter(afterId, task) {
+    const tasks = getTasks();
+    const idx = tasks.findIndex(t => t.id === afterId);
+    const newTask = { id: genId(), dateCreated: Date.now(), archived: false, ...task };
+    if (idx === -1) tasks.push(newTask);
+    else tasks.splice(idx + 1, 0, newTask);
+    saveTasks(tasks);
+    return newTask;
+  }
+  function updateTask(id, updates) {
+    const tasks = getTasks();
+    const idx = tasks.findIndex(t => t.id === id);
+    if (idx !== -1) tasks[idx] = { ...tasks[idx], ...updates };
+    saveTasks(tasks);
+  }
+  function archiveTask(id) {
+    updateTask(id, { archived: true, archivedAt: Date.now() });
+  }
+  function moveTask(id, newState) {
+    const updates = { state: newState };
+    if (newState === 'completed') updates.dateCompleted = Date.now();
+    if (newState === 'inprogress') updates.dateStarted = Date.now();
+    if (newState === 'todo') { delete updates.dateStarted; delete updates.dateCompleted; }
+    updateTask(id, updates);
+  }
+  function restoreTask(id, dayKey) {
+    updateTask(id, { state: 'todo', dayKey, dateCompleted: null });
+  }
+  function reorderTaskToTop(id) {
+    const tasks = getTasks();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const peers = tasks.filter(t =>
+      !t.archived &&
+      t.state === task.state &&
+      (t.categoryId || null) === (task.categoryId || null) &&
+      (task.state !== 'todo' || t.dayKey === task.dayKey)
+    );
+    if (peers.length < 2) return;
+    const topId = peers[0].id;
+    if (topId === id) return;
+    const i = tasks.findIndex(t => t.id === id);
+    const j = tasks.findIndex(t => t.id === topId);
+    tasks.splice(i, 1);
+    tasks.splice(j, 0, task);
+    saveTasks(tasks);
+  }
+  function reorderTask(id, direction) {
+    const tasks = getTasks();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const peers = tasks.filter(t =>
+      !t.archived &&
+      t.state === task.state &&
+      (t.categoryId || null) === (task.categoryId || null) &&
+      (task.state !== 'todo' || t.dayKey === task.dayKey)
+    );
+    const peerIdx = peers.findIndex(t => t.id === id);
+    const swapPeer = peers[peerIdx + direction];
+    if (!swapPeer) return;
+    const i = tasks.findIndex(t => t.id === id);
+    const j = tasks.findIndex(t => t.id === swapPeer.id);
+    [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
+    saveTasks(tasks);
+  }
+
+  // ── Events ──
+  function getEvents() {
+    const data = load();
+    return (data.events || []).filter(e => !e.archived);
+  }
+  function addEvent(event) {
+    const data = load();
+    if (!data.events) data.events = [];
+    const newEvt = { id: genId(), done: false, archived: false, ...event };
+    data.events.push(newEvt);
+    save(data);
+    return newEvt;
+  }
+  function updateEvent(id, updates) {
+    const data = load();
+    if (!data.events) return;
+    const idx = data.events.findIndex(e => e.id === id);
+    if (idx !== -1) data.events[idx] = { ...data.events[idx], ...updates };
+    save(data);
+  }
+  function archiveEvent(id) { updateEvent(id, { archived: true }); }
+
+  // ── Categories ──
+  function getCategories() {
+    const data = load();
+    return data.categories || [];
+  }
+  function addCategory(name) {
+    const data = load();
+    if (!data.categories) data.categories = [];
+    const cat = { id: genId(), name };
+    data.categories.push(cat);
+    save(data);
+    return cat;
+  }
+  function updateCategory(id, name) {
+    const data = load();
+    if (!data.categories) return;
+    const idx = data.categories.findIndex(c => c.id === id);
+    if (idx !== -1) data.categories[idx].name = name;
+    save(data);
+  }
+  function deleteCategory(id) {
+    const data = load();
+    if (!data.categories) return;
+    data.categories = data.categories.filter(c => c.id !== id);
+    if (data.tasks) data.tasks.forEach(t => { if (t.categoryId === id) delete t.categoryId; });
+    save(data);
+  }
+
+  // Archived tasks
+  function getArchivedTasks() {
+    const data = load();
+    return (data.tasks || []).filter(t => t.archived).sort((a,b) => (b.archivedAt||0) - (a.archivedAt||0));
+  }
+
+  return {
+    dateKey, todayKey, offsetDate, formatDateShort,
+    getGrateful, setGrateful, getGratefulDays,
+    getWants, setWants,
+    getTasks, saveTasks, addTask, insertTaskAfter, updateTask, archiveTask, moveTask, restoreTask, reorderTask, reorderTaskToTop, genId,
+    getEvents, addEvent, updateEvent, archiveEvent,
+    getArchivedTasks,
+    getCategories, addCategory, updateCategory, deleteCategory,
+  };
+})();
+
+// ─── APP STATE ────────────────────────────────────────────────────────────────
+const state = {
+  viewDay: DB.todayKey(),
+  calMonth: (() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; })(),
+  collapsedCats: new Set(),
+  expandedTasks: new Set(),
+  archiveTab: 'grateful',
+};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDayLabel(key) {
+  const today = DB.todayKey();
+  const d = new Date(key + 'T00:00:00');
+  const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+  if (key === today) return 'Today, ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const yd = DB.offsetDate(today, -1);
+  if (key === yd) return 'Yesterday, ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', opts);
+}
+
+function daysUntil(dateStr) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return Math.round((d - now) / 86400000);
+}
+
+function formatEventMonth(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+}
+function formatEventDay(dateStr) {
+  return new Date(dateStr + 'T00:00:00').getDate();
+}
+
+function formatDueDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff < 0) return `${Math.abs(diff)}d overdue`;
+  if (diff === 0) return 'due today';
+  if (diff === 1) return 'due tomorrow';
+  return `due ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+function autoResize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+// ─── DAILY BRIEFING ───────────────────────────────────────────────────────────
+const QUOTES = [
+  { q: "The only way to do great work is to love what you do.", a: "Steve Jobs" },
+  { q: "In the middle of every difficulty lies opportunity.", a: "Albert Einstein" },
+  { q: "It does not matter how slowly you go as long as you do not stop.", a: "Confucius" },
+  { q: "Everything you've ever wanted is on the other side of fear.", a: "George Addair" },
+  { q: "Success is not final, failure is not fatal: it is the courage to continue that counts.", a: "Winston Churchill" },
+  { q: "Hardships often prepare ordinary people for an extraordinary destiny.", a: "C.S. Lewis" },
+  { q: "Believe you can and you're halfway there.", a: "Theodore Roosevelt" },
+  { q: "The future belongs to those who believe in the beauty of their dreams.", a: "Eleanor Roosevelt" },
+  { q: "It always seems impossible until it's done.", a: "Nelson Mandela" },
+  { q: "Do what you can, with what you have, where you are.", a: "Theodore Roosevelt" },
+  { q: "You miss 100% of the shots you don't take.", a: "Wayne Gretzky" },
+  { q: "Whether you think you can or you think you can't, you're right.", a: "Henry Ford" },
+  { q: "The best time to plant a tree was 20 years ago. The second best time is now.", a: "Chinese Proverb" },
+  { q: "An unexamined life is not worth living.", a: "Socrates" },
+  { q: "Spread love everywhere you go. Let no one ever come to you without leaving happier.", a: "Mother Teresa" },
+  { q: "When you reach the end of your rope, tie a knot in it and hang on.", a: "Franklin D. Roosevelt" },
+  { q: "Always remember that you are absolutely unique. Just like everyone else.", a: "Margaret Mead" },
+  { q: "Don't judge each day by the harvest you reap but by the seeds that you plant.", a: "Robert Louis Stevenson" },
+  { q: "The only impossible journey is the one you never begin.", a: "Tony Robbins" },
+  { q: "In this life we cannot do great things. We can only do small things with great love.", a: "Mother Teresa" },
+  { q: "Never let the fear of striking out keep you from playing the game.", a: "Babe Ruth" },
+  { q: "Life is either a daring adventure or nothing at all.", a: "Helen Keller" },
+  { q: "Many of life's failures are people who did not realize how close they were to success when they gave up.", a: "Thomas Edison" },
+  { q: "You have brains in your head. You have feet in your shoes. You can steer yourself any direction you choose.", a: "Dr. Seuss" },
+  { q: "If life were predictable it would cease to be life, and be without flavor.", a: "Eleanor Roosevelt" },
+  { q: "If you look at what you have in life, you'll always have more.", a: "Oprah Winfrey" },
+  { q: "If you want to live a happy life, tie it to a goal, not to people or things.", a: "Albert Einstein" },
+  { q: "Never let the fear of striking out keep you from playing the game.", a: "Babe Ruth" },
+  { q: "Money and success don't change people; they merely amplify what is already there.", a: "Will Smith" },
+  { q: "Your time is limited, so don't waste it living someone else's life.", a: "Steve Jobs" },
+  { q: "Not how long, but how well you have lived is the main thing.", a: "Seneca" },
+  { q: "If life were predictable it would cease to be life, and be without flavor.", a: "Eleanor Roosevelt" },
+  { q: "The whole secret of a successful life is to find out what is one's destiny to do, and then do it.", a: "Henry Ford" },
+  { q: "In order to write about life first you must live it.", a: "Ernest Hemingway" },
+  { q: "The big lesson in life is never be scared of anyone or anything.", a: "Frank Sinatra" },
+  { q: "Sing like no one's listening, love like you've never been hurt, dance like nobody's watching.", a: "Mark Twain" },
+  { q: "Curiosity is the engine of achievement.", a: "Ken Robinson" },
+  { q: "What lies behind us and what lies before us are tiny matters compared to what lies within us.", a: "Ralph Waldo Emerson" },
+  { q: "You will face many defeats in life, but never let yourself be defeated.", a: "Maya Angelou" },
+  { q: "The greatest glory in living lies not in never falling, but in rising every time we fall.", a: "Nelson Mandela" },
+  { q: "In the end, it's not the years in your life that count. It's the life in your years.", a: "Abraham Lincoln" },
+  { q: "Never let the fear of striking out keep you from playing the game.", a: "Babe Ruth" },
+  { q: "Life is not measured by the number of breaths we take, but by the moments that take our breath away.", a: "Maya Angelou" },
+  { q: "If you want to achieve greatness, stop asking for permission.", a: "Anonymous" },
+  { q: "Things work out best for those who make the best of how things work out.", a: "John Wooden" },
+  { q: "To live is the rarest thing in the world. Most people exist, that is all.", a: "Oscar Wilde" },
+  { q: "Do not go where the path may lead, go instead where there is no path and leave a trail.", a: "Ralph Waldo Emerson" },
+  { q: "You only live once, but if you do it right, once is enough.", a: "Mae West" },
+  { q: "Be yourself; everyone else is already taken.", a: "Oscar Wilde" },
+  { q: "Two things are infinite: the universe and human stupidity; and I'm not sure about the universe.", a: "Albert Einstein" },
+  { q: "We accept the love we think we deserve.", a: "Stephen Chbosky" },
+  { q: "Be the change you wish to see in the world.", a: "Mahatma Gandhi" },
+  { q: "A room without books is like a body without a soul.", a: "Marcus Tullius Cicero" },
+  { q: "I am so clever that sometimes I don't understand a single word of what I am saying.", a: "Oscar Wilde" },
+  { q: "Anyone who has never made a mistake has never tried anything new.", a: "Albert Einstein" },
+  { q: "The person who reads too much and uses his brain too little will fall into lazy habits of thinking.", a: "Albert Einstein" },
+  { q: "Go confidently in the direction of your dreams. Live the life you have imagined.", a: "Henry David Thoreau" },
+  { q: "When one door of happiness closes, another opens, but often we look so long at the closed door that we do not see the one which has been opened for us.", a: "Helen Keller" },
+  { q: "Life is what happens when you're busy making other plans.", a: "John Lennon" },
+  { q: "Spread love everywhere you go.", a: "Mother Teresa" },
+  { q: "When you reach the end of your rope, tie a knot in it and hang on.", a: "Franklin D. Roosevelt" },
+  { q: "Tell me, what is it you plan to do with your one wild and precious life?", a: "Mary Oliver" },
+];
+
+function getDayOfYear() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  return Math.floor((now - start) / 86400000);
+}
+
+
+function renderBriefingGig() {
+  const next = DB.getEvents()
+    .filter(e => !e.done && daysUntil(e.date) >= 0)
+    .sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0];
+
+  const el = document.getElementById('briefing-gig');
+  if (!el) return;
+
+  if (!next) { el.style.display = 'none'; return; }
+
+  const d = daysUntil(next.date);
+  const countdown = d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`;
+  const dateStr = new Date(next.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  document.getElementById('briefing-gig-countdown').textContent = `${dateStr} · ${countdown}`;
+  document.getElementById('briefing-gig-name').textContent = next.name;
+  el.style.display = 'flex';
+}
+
+function renderBriefingTasks() {
+  const tasks = DB.getTasks().filter(t => !t.archived && !t.done);
+
+  // Next urgent task (nextup first, then todo, then inprogress)
+  const stateOrder = { nextup: 0, todo: 1, inprogress: 2 };
+  const urgent = tasks
+    .filter(t => t.urgent)
+    .sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9))[0];
+  const urgentEl = document.getElementById('briefing-urgent');
+  if (urgent) {
+    const label = urgent.state === 'nextup' ? 'Next Up' : urgent.state === 'todo' ? 'To Do' : 'In Progress';
+    document.getElementById('briefing-urgent-state').textContent = label;
+    document.getElementById('briefing-urgent-name').textContent = urgent.text;
+    urgentEl.style.display = 'flex';
+  } else {
+    urgentEl.style.display = 'none';
+  }
+
+  // Next task with a due date (soonest non-overdue first, then overdue)
+  const today = DB.todayKey();
+  const withDue = tasks.filter(t => t.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+  const deadlineEl = document.getElementById('briefing-deadline');
+  if (withDue) {
+    const diff = Math.round((new Date(withDue.dueDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+    const dueLabel = diff < 0 ? `${Math.abs(diff)}d overdue` : diff === 0 ? 'due today' : diff === 1 ? 'due tomorrow' : `due in ${diff}d`;
+    document.getElementById('briefing-deadline-due').textContent = dueLabel;
+    document.getElementById('briefing-deadline-name').textContent = withDue.text;
+    deadlineEl.style.display = 'flex';
+  } else {
+    deadlineEl.style.display = 'none';
+  }
+}
+
+function renderBriefingGreeting() {
+  const h = new Date().getHours();
+  const period = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+  document.getElementById('briefing-greeting').textContent = `Good ${period}, Warren.`;
+}
+
+function renderBriefingQuote() {
+  const idx = getDayOfYear() % QUOTES.length;
+  const { q, a } = QUOTES[idx];
+  document.getElementById('briefing-quote').textContent = `"${q}"`;
+  document.getElementById('briefing-author').textContent = `— ${a}`;
+}
+
+async function renderOnThisDay() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/selected/${month}/${day}`);
+    const data = await res.json();
+    const items = data.selected || data.events || [];
+    if (!items.length) throw new Error('empty');
+    // Pick one deterministically by day-of-year
+    const item = items[getDayOfYear() % items.length];
+    document.getElementById('otd-year').textContent = item.year;
+    document.getElementById('otd-text').textContent = item.text;
+  } catch {
+    // Fall back to events endpoint
+    try {
+      const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`);
+      const data = await res.json();
+      const items = data.events || [];
+      if (!items.length) throw new Error('empty');
+      const item = items[getDayOfYear() % items.length];
+      document.getElementById('otd-year').textContent = item.year;
+      document.getElementById('otd-text').textContent = item.text;
+    } catch {
+      document.getElementById('otd-year').textContent = '';
+      document.getElementById('otd-text').textContent = 'Could not load today\'s event.';
+    }
+  }
+}
+
+// ─── CALENDAR ─────────────────────────────────────────────────────────────────
+function renderCalendar() {
+  const { year, month } = state.calMonth;
+  const today = DB.todayKey();
+  const events = DB.getEvents();
+  const eventDates = new Set(events.map(e => e.date));
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-label').textContent = monthNames[month] + ' ' + year;
+
+  const first = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev = new Date(year, month, 0).getDate();
+
+  const grid = document.getElementById('cal-grid');
+  const dow = ['S','M','T','W','T','F','S'];
+  let html = dow.map(d => `<div class="mini-cal-dow">${d}</div>`).join('');
+
+  let cells = [];
+  for (let i = 0; i < first; i++) cells.push({ day: daysInPrev - first + 1 + i, otherMonth: true, month: month === 0 ? 11 : month - 1, year: month === 0 ? year - 1 : year });
+  for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, otherMonth: false, month, year });
+  while (cells.length % 7 !== 0) { const idx = cells.length - daysInMonth; cells.push({ day: idx + 1, otherMonth: true, month: month === 11 ? 0 : month + 1, year: month === 11 ? year + 1 : year }); }
+
+  cells.forEach(c => {
+    const key = `${c.year}-${String(c.month+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
+    let cls = 'mini-cal-day';
+    if (c.otherMonth) cls += ' other-month';
+    if (key === today) cls += ' today';
+    if (key === state.viewDay && key !== today) cls += ' selected-day';
+    if (eventDates.has(key)) cls += ' has-event';
+    html += `<div class="${cls}" data-date="${key}">${c.day}</div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+function renderSidebarDate() {
+  document.getElementById('sidebar-date-text').textContent = formatDayLabel(state.viewDay);
+  const isToday = state.viewDay === DB.todayKey();
+  document.getElementById('btn-next-day').style.opacity = isToday ? '0.3' : '1';
+  document.getElementById('btn-next-day').style.pointerEvents = isToday ? 'none' : '';
+}
+
+// ─── GRATEFUL ─────────────────────────────────────────────────────────────────
+let gratefulSaveTimer = null;
+
+function renderGrateful() {
+  const entry = DB.getGrateful(state.viewDay);
+  const ta = document.getElementById('grateful-textarea');
+  ta.value = entry.text || '';
+  autoResize(ta);
+  const isToday = state.viewDay === DB.todayKey();
+  document.getElementById('grateful-hint').textContent = isToday
+    ? 'Resets at midnight · previous days saved to archive'
+    : `Viewing ${formatDayLabel(state.viewDay)} · read-only`;
+  ta.readOnly = !isToday;
+  ta.style.opacity = isToday ? '' : '0.75';
+}
+
+function initGrateful() {
+  const ta = document.getElementById('grateful-textarea');
+  ta.addEventListener('input', () => {
+    autoResize(ta);
+    clearTimeout(gratefulSaveTimer);
+    gratefulSaveTimer = setTimeout(() => {
+      DB.setGrateful(state.viewDay, ta.value);
+    }, 400);
+  });
+  const openArchive = () => { state.archiveTab = 'grateful'; openArchiveOverlay(); };
+  document.getElementById('btn-grateful-archive').addEventListener('click', openArchive);
+  document.getElementById('btn-grateful-archive2').addEventListener('click', openArchive);
+}
+
+// ─── WANTS ────────────────────────────────────────────────────────────────────
+let wantsSaveTimer = null;
+
+function renderWants() {
+  const wants = DB.getWants();
+  const ta = document.getElementById('wants-textarea');
+  ta.value = wants.text || '';
+  autoResize(ta);
+}
+
+function initWants() {
+  const ta = document.getElementById('wants-textarea');
+  ta.addEventListener('input', () => {
+    autoResize(ta);
+    clearTimeout(wantsSaveTimer);
+    wantsSaveTimer = setTimeout(() => { DB.setWants(ta.value); }, 600);
+  });
+  const openArchive = () => { state.archiveTab = 'wants'; openArchiveOverlay(); };
+  document.getElementById('btn-wants-archive').addEventListener('click', openArchive);
+  document.getElementById('btn-wants-archive2').addEventListener('click', openArchive);
+}
+
+// ─── TASK OUTLINER ────────────────────────────────────────────────────────────
+function renderTaskRow(task, listState) {
+  const indented = !!task.categoryId;
+  const indentStyle = indented ? 'padding-left:24px;' : '';
+  const lineHtml = indented ? '<div style="position:absolute;left:10px;top:0;bottom:0;width:1px;background:var(--border2)"></div>' : '';
+
+  let actions = '';
+  if (listState === 'nextup') {
+    actions = `<div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
+               <div class="outliner-action go" data-action="start" data-id="${task.id}">▶ Start</div>
+               <div class="outliner-action" data-action="todo" data-id="${task.id}">← Back</div>
+               <div class="outliner-action" data-action="archive" data-id="${task.id}">Archive</div>`;
+  } else if (listState === 'todo') {
+    actions = `<div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
+               <div class="outliner-action go" data-action="start" data-id="${task.id}">▶ Start</div>
+               <div class="outliner-action" data-action="nextup" data-id="${task.id}">← Back</div>
+               <div class="outliner-action" data-action="archive" data-id="${task.id}">Archive</div>`;
+  } else if (listState === 'inprogress') {
+    actions = `<div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
+               <div class="outliner-action" data-action="back" data-id="${task.id}">← Back</div>
+               <div class="outliner-action" data-action="archive" data-id="${task.id}">Archive</div>`;
+  }
+
+  const isExpanded = state.expandedTasks.has(task.id);
+
+  // Due date badge
+  let dueBadgeClass = 'task-due-badge';
+  if (task.dueDate) {
+    const diff = Math.round((new Date(task.dueDate + 'T00:00:00') - new Date().setHours(0,0,0,0)) / 86400000);
+    if (diff < 0) dueBadgeClass += ' overdue';
+    else if (diff === 0) dueBadgeClass += ' due-today';
+  }
+  const dueBadge = task.dueDate ? `<span class="${dueBadgeClass}">${formatDueDate(task.dueDate)}</span>` : '';
+  const urgentBadge = task.urgent ? `<span class="task-urgent-badge">! URGENT</span>` : '';
+
+  // Expanded detail panel
+  const clearBtn = task.dueDate ? `<span class="task-detail-clear" data-action="clear-due" data-id="${task.id}">✕ clear</span>` : '';
+  const detailPanel = isExpanded ? `<div class="task-detail">
+    <textarea class="task-notes" data-id="${task.id}" placeholder="Add notes…" rows="2">${esc(task.notes || '')}</textarea>
+    <div class="task-detail-meta">
+      <span class="task-detail-label">Due</span>
+      <input class="task-due-input" type="date" data-id="${task.id}" value="${task.dueDate || ''}" />
+      ${clearBtn}
+    </div>
+  </div>` : '';
+
+  const startedMeta = listState === 'inprogress' && task.dateStarted
+    ? `<div class="outliner-input-meta">Started ${new Date(task.dateStarted).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>` : '';
+
+  const detailToggle = `<div class="outliner-action" data-action="toggle-detail" data-id="${task.id}" title="Notes &amp; due date">${isExpanded ? '▲' : '···'}</div>`;
+  const reorderBtns = `<div class="outliner-action" data-action="move-up" data-id="${task.id}" title="Move up (⇧↑)">↑</div><div class="outliner-action" data-action="move-down" data-id="${task.id}" title="Move down (⇧↓)">↓</div>`;
+  const urgentBtn = `<div class="outliner-action${task.urgent ? ' urgent-on' : ''}" data-action="toggle-urgent" data-id="${task.id}" title="Toggle urgent (⌘U)">!</div>`;
+
+  return `<div class="outliner-row${task.urgent ? ' is-urgent' : ''}" data-id="${task.id}" style="${indentStyle}position:relative">
+    ${lineHtml}
+    <div class="outliner-check${task.done ? ' done' : ''}"></div>
+    <div class="outliner-input-wrap">
+      <div class="outliner-task-line">
+        <input class="outliner-input${task.done ? ' is-done' : ''}" data-id="${task.id}" value="${esc(task.text || '')}" placeholder="Task..." />
+        ${dueBadge}
+      </div>
+      ${task.urgent ? `<div>${urgentBadge}</div>` : ''}
+      ${!isExpanded && task.notes ? `<div class="outliner-notes-preview">${esc(task.notes.split('\n')[0])}</div>` : ''}
+      ${startedMeta}
+      ${detailPanel}
+    </div>
+    <div class="outliner-row-actions">${urgentBtn}${reorderBtns}${detailToggle}${actions}</div>
+  </div>`;
+}
+
+function renderAddTaskInput(catId, listState) {
+  const indentStyle = catId ? 'padding-left:24px;' : '';
+  return `<div class="outliner-row" style="margin-top:2px;${indentStyle}">
+    <div class="outliner-check invisible"></div>
+    <div class="outliner-input-wrap">
+      <input class="outliner-input add-task-input" data-cat="${catId}" data-list="${listState}" placeholder="Add task..." />
+    </div>
+  </div>`;
+}
+
+function renderOutliner(containerId, listState) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const categories = DB.getCategories();
+  const catIds = new Set(categories.map(c => c.id));
+  const tasks = listState === 'todo'
+    ? DB.getTasks().filter(t => !t.archived && t.state === 'todo' && t.dayKey === state.viewDay)
+    : DB.getTasks().filter(t => !t.archived && t.state === listState);
+
+  let html = '';
+
+  // Uncategorized tasks
+  const uncatTasks = tasks.filter(t => !t.categoryId || !catIds.has(t.categoryId));
+  uncatTasks.forEach(t => { html += renderTaskRow(t, listState); });
+  html += renderAddTaskInput('', listState);
+
+  // Sort categories by priority:
+  //   1. urgent + has deadline  → sorted by nearest deadline
+  //   2. urgent + no deadline
+  //   3. no urgent + has deadline → sorted by nearest deadline
+  //   4. has tasks, no urgency/deadline
+  //   5. empty
+  const sortedCategories = [...categories].sort((a, b) => {
+    const aTasks = tasks.filter(t => t.categoryId === a.id);
+    const bTasks = tasks.filter(t => t.categoryId === b.id);
+
+    const aUrgentDue  = aTasks.filter(t => t.urgent && t.dueDate).map(t => t.dueDate).sort()[0] || null;
+    const bUrgentDue  = bTasks.filter(t => t.urgent && t.dueDate).map(t => t.dueDate).sort()[0] || null;
+    const aUrgent     = aTasks.some(t => t.urgent);
+    const bUrgent     = bTasks.some(t => t.urgent);
+    const aDue        = aTasks.filter(t => t.dueDate).map(t => t.dueDate).sort()[0] || null;
+    const bDue        = bTasks.filter(t => t.dueDate).map(t => t.dueDate).sort()[0] || null;
+
+    // Tier 1: urgent with deadline — rank by that deadline
+    if (aUrgentDue && bUrgentDue) return aUrgentDue.localeCompare(bUrgentDue);
+    if (aUrgentDue || bUrgentDue) return aUrgentDue ? -1 : 1;
+
+    // Tier 2: urgent without deadline
+    if (aUrgent !== bUrgent) return aUrgent ? -1 : 1;
+
+    // Tier 3: non-urgent with deadline — rank by nearest deadline
+    if (aDue && bDue) return aDue.localeCompare(bDue);
+    if (aDue || bDue) return aDue ? -1 : 1;
+
+    // Tier 4: has tasks vs empty
+    const aHas = aTasks.length > 0;
+    const bHas = bTasks.length > 0;
+    if (aHas !== bHas) return aHas ? -1 : 1;
+
+    return 0;
+  });
+
+  // Category groups
+  sortedCategories.forEach(cat => {
+    const isCollapsed = state.collapsedCats.has(cat.id);
+    const catTasks = tasks.filter(t => t.categoryId === cat.id);
+
+    html += `<div class="outliner-row is-category-row${isCollapsed ? ' cat-collapsed' : ''}" style="margin-top:12px">
+      <div class="cat-chevron" data-toggle-cat="${cat.id}">▾</div>
+      <div class="outliner-input-wrap" style="padding-left:4px">
+        <input class="outliner-input is-category" data-cat-id="${cat.id}" value="${esc(cat.name)}" placeholder="Category name..." />
+      </div>
+      <div class="outliner-row-actions">
+        <div class="outliner-action" data-action="remove-cat" data-cat-id="${cat.id}">Remove</div>
+      </div>
+    </div>`;
+
+    if (!isCollapsed) {
+      catTasks.forEach(t => { html += renderTaskRow(t, listState); });
+      html += renderAddTaskInput(cat.id, listState);
+    }
+  });
+
+  // Add category input
+  html += `<div class="add-cat-row">
+    <span class="add-cat-plus">+</span>
+    <input class="add-cat-input" data-list="${listState}" placeholder="Add category…" />
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+function renderNextUpSection() {
+  renderOutliner('nextup-outliner', 'nextup');
+  const tasks = DB.getTasks().filter(t => !t.archived && t.state === 'nextup');
+  const count = tasks.length;
+  document.getElementById('nextup-subtitle').textContent = `· ${count} task${count !== 1 ? 's' : ''}`;
+  document.getElementById('badge-nextup').textContent = count || '';
+}
+
+function renderTodoSection() {
+  renderOutliner('todo-outliner', 'todo');
+  const tasks = DB.getTasks().filter(t => !t.archived && t.state === 'todo' && t.dayKey === state.viewDay);
+  const count = tasks.length;
+  document.getElementById('todo-subtitle').textContent = `· ${count} task${count !== 1 ? 's' : ''}`;
+  document.getElementById('badge-todo').textContent = count || '';
+}
+
+function renderInProgressSection() {
+  renderOutliner('inprogress-outliner', 'inprogress');
+  const tasks = DB.getTasks().filter(t => !t.archived && t.state === 'inprogress');
+  const count = tasks.length;
+  document.getElementById('inprogress-subtitle').textContent = `· ${count} task${count !== 1 ? 's' : ''}`;
+  document.getElementById('badge-inprogress').textContent = count || '';
+}
+
+function renderCompletedSection() {
+  const tasks = DB.getTasks().filter(t => !t.archived && t.state === 'completed');
+  const cats = DB.getCategories();
+  const catMap = Object.fromEntries(cats.map(c => [c.id, c.name]));
+
+  // Group by date
+  const groups = {};
+  tasks.forEach(t => {
+    const dk = t.dateCompleted ? DB.dateKey(new Date(t.dateCompleted)) : 'unknown';
+    if (!groups[dk]) groups[dk] = [];
+    groups[dk].push(t);
+  });
+
+  const sortedDates = Object.keys(groups).sort().reverse();
+  const container = document.getElementById('completed-list');
+
+  if (sortedDates.length === 0) {
+    container.innerHTML = '<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dimmer);padding:8px 0">Nothing completed yet</div>';
+    document.getElementById('completed-subtitle').textContent = '· 0 total';
+    document.getElementById('badge-completed').textContent = '';
+    return;
+  }
+
+  const today = DB.todayKey();
+  const yesterday = DB.offsetDate(today, -1);
+  let html = '';
+
+  sortedDates.forEach((dk, idx) => {
+    const label = dk === today ? `Today — ${new Date(dk+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}`
+      : dk === yesterday ? `Yesterday — ${new Date(dk+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}`
+      : `${new Date(dk+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:idx>4?'numeric':undefined})}`;
+
+    const isOlder = idx >= 2;
+    const collapsed = isOlder;
+    html += `<div class="completed-date-group${collapsed ? ' collapsed' : ''}" data-date-group="${dk}">
+      <div class="completed-date completed-date-toggle" data-toggle-group="${dk}">${label}${isOlder ? ` <span style="opacity:0.5;font-size:8px">▸ ${groups[dk].length} items</span>` : ''}</div>
+      <div class="completed-group-items">`;
+    groups[dk].forEach(t => {
+      const time = t.dateCompleted ? new Date(t.dateCompleted).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+      const catName = t.categoryId && catMap[t.categoryId] ? esc(catMap[t.categoryId]) : '';
+      const catBadge = catName ? `<span class="cat-label-badge" style="margin-top:0;margin-left:6px">${catName}</span>` : '';
+      html += `<div class="completed-item" data-id="${t.id}">
+        <div class="completed-check"></div>
+        <div class="completed-title">${esc(t.text)}${catBadge}</div>
+        <div class="completed-meta">${time}</div>
+        <div class="completed-actions">
+          <div class="outliner-action" data-action="restore" data-id="${t.id}">↩ Restore</div>
+          <div class="outliner-action" data-action="archive" data-id="${t.id}">Archive</div>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html;
+
+  const total = tasks.length;
+  document.getElementById('completed-subtitle').textContent = `· ${total} total`;
+  document.getElementById('badge-completed').textContent = total || '';
+}
+
+function renderEventsSection() {
+  const events = DB.getEvents();
+  const today = DB.todayKey();
+  const sorted = [...events].sort((a, b) => {
+    const da = daysUntil(a.date), db = daysUntil(b.date);
+    if (a.done && !b.done) return 1;
+    if (!a.done && b.done) return -1;
+    return da - db;
+  });
+
+  const container = document.getElementById('events-list');
+  let html = '';
+
+  sorted.forEach(evt => {
+    const days = daysUntil(evt.date);
+    const isPast = days < 0;
+    const countdown = isPast ? `Passed · ${Math.abs(days)} day${Math.abs(days)!==1?'s':''} ago`
+      : days === 0 ? 'Today!'
+      : `${days} day${days!==1?'s':''} away`;
+
+    html += `<div class="wf-event${isPast || evt.done ? ' is-past' : ''}" data-event-id="${evt.id}">
+      <div class="wf-event-date">
+        <div class="wf-event-month">${formatEventMonth(evt.date)}</div>
+        <div class="wf-event-day">${formatEventDay(evt.date)}</div>
+      </div>
+      <div class="wf-event-body">
+        <div class="wf-event-name${evt.done ? ' done' : ''}">${esc(evt.name)}</div>
+        <div class="wf-event-countdown">${countdown}</div>
+        ${evt.notes ? `<div class="wf-event-notes">${esc(evt.notes)}</div>` : ''}
+      </div>
+      <div class="wf-event-check${evt.done ? ' done' : ''}" data-action="toggle-event" data-id="${evt.id}"></div>
+      <div class="wf-event-actions">
+        <div class="outliner-action" data-action="archive-event" data-id="${evt.id}">Archive</div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+  renderBriefingGig();
+  renderBriefingTasks();
+
+  const nextGig = sorted.find(e => !e.done && daysUntil(e.date) >= 0);
+  if (nextGig) {
+    const d = daysUntil(nextGig.date);
+    const badge = d === 0 ? 'today' : d === 1 ? '1 day' : `${d}d`;
+    const subtitle = d === 0 ? '· today!' : d === 1 ? '· tomorrow' : `· in ${d} days`;
+    document.getElementById('badge-events').textContent = badge;
+    document.getElementById('events-subtitle').textContent = subtitle;
+  } else {
+    document.getElementById('badge-events').textContent = '';
+    document.getElementById('events-subtitle').textContent = '· upcoming';
+  }
+}
+
+// ─── TASK INTERACTIONS ────────────────────────────────────────────────────────
+function renderSection(name) {
+  if (name === 'nextup') renderNextUpSection();
+  else if (name === 'todo') renderTodoSection();
+  else if (name === 'inprogress') renderInProgressSection();
+  else if (name === 'completed') renderCompletedSection();
+}
+
+function renderAllTaskSections() {
+  renderNextUpSection();
+  renderTodoSection();
+  renderInProgressSection();
+  renderCompletedSection();
+}
+
+// ─── EVENT DELEGATION ─────────────────────────────────────────────────────────
+function initTaskDelegation(containerId, listState) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // Store original value on focus so Escape can restore it
+  container.addEventListener('focusin', (e) => {
+    if (e.target.classList.contains('outliner-input') && e.target.dataset.id) {
+      e.target._originalValue = e.target.value;
+    }
+  });
+
+  // Debounced saves for task text, notes, category name; immediate save for due date
+  container.addEventListener('input', (e) => {
+    const target = e.target;
+    if (target.classList.contains('outliner-input') && target.dataset.id) {
+      clearTimeout(target._saveTimer);
+      target._saveTimer = setTimeout(() => {
+        DB.updateTask(target.dataset.id, { text: target.value });
+      }, 400);
+    }
+    if (target.classList.contains('task-notes') && target.dataset.id) {
+      clearTimeout(target._saveTimer);
+      target._saveTimer = setTimeout(() => {
+        DB.updateTask(target.dataset.id, { notes: target.value });
+      }, 400);
+    }
+    if (target.classList.contains('task-due-input') && target.dataset.id) {
+      DB.updateTask(target.dataset.id, { dueDate: target.value });
+      state.expandedTasks.delete(target.dataset.id);
+      renderSection(listState);
+      renderBriefingTasks();
+    }
+    if (target.dataset.catId) {
+      clearTimeout(target._saveTimer);
+      target._saveTimer = setTimeout(() => {
+        DB.updateCategory(target.dataset.catId, target.value);
+      }, 400);
+    }
+  });
+
+  container.addEventListener('keydown', (e) => {
+    const target = e.target;
+
+    // Cmd+Enter inside detail panel closes it and refocuses the task input
+    if (e.key === 'Enter' && e.metaKey &&
+        (target.classList.contains('task-notes') || target.classList.contains('task-due-input'))) {
+      e.preventDefault();
+      const id = target.dataset.id;
+      if (id) {
+        DB.updateTask(id, target.classList.contains('task-notes') ? { notes: target.value } : { dueDate: target.value });
+        state.expandedTasks.delete(id);
+        renderSection(listState);
+        setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0);
+      }
+      return;
+    }
+
+    // Add task input: Enter creates a task under the given category
+    if (target.classList.contains('add-task-input') && e.key === 'Enter') {
+      e.preventDefault();
+      const text = target.value.trim();
+      if (!text) return;
+      const catId = target.dataset.cat || undefined;
+      const dayKey = listState === 'todo' ? state.viewDay : undefined;
+      DB.addTask({ text, categoryId: catId, state: listState, dayKey });
+      renderSection(listState);
+      setTimeout(() => {
+        const inputs = container.querySelectorAll(`.add-task-input[data-cat="${target.dataset.cat}"]`);
+        if (inputs.length) inputs[0].focus();
+      }, 0);
+      return;
+    }
+
+    // Add category input: Enter creates a global category (propagates to all sections)
+    if (target.classList.contains('add-cat-input') && e.key === 'Enter') {
+      e.preventDefault();
+      const name = target.value.trim();
+      if (!name) return;
+      DB.addCategory(name);
+      renderAllTaskSections();
+      return;
+    }
+
+    // Existing task input keyboard shortcuts
+    if (target.classList.contains('outliner-input') && target.dataset.id) {
+      const id = target.dataset.id;
+
+      if (e.key === 'u' && e.metaKey) {
+        e.preventDefault();
+        const t = DB.getTasks().find(t => t.id === id);
+        const nowUrgent = !t?.urgent;
+        DB.updateTask(id, { urgent: nowUrgent });
+        if (nowUrgent) DB.reorderTaskToTop(id);
+        renderSection(listState);
+        renderBriefingTasks();
+        setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0);
+        return;
+      }
+
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.shiftKey) {
+        e.preventDefault();
+        DB.updateTask(id, { text: target.value });
+        DB.reorderTask(id, e.key === 'ArrowUp' ? -1 : 1);
+        renderSection(listState);
+        setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0);
+        return;
+      }
+
+      if (e.key === 'Enter' && e.metaKey) {
+        e.preventDefault();
+        DB.updateTask(id, { text: target.value });
+        if (state.expandedTasks.has(id)) state.expandedTasks.delete(id);
+        else state.expandedTasks.add(id);
+        renderSection(listState);
+        setTimeout(() => {
+          const panel = document.querySelector(`.task-detail textarea[data-id="${id}"]`);
+          if (panel) panel.focus();
+          else document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus();
+        }, 0);
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        DB.updateTask(id, { text: target.value });
+        const task = DB.getTasks().find(t => t.id === id);
+        const dayKey = listState === 'todo' ? state.viewDay : undefined;
+        const newTask = DB.insertTaskAfter(id, { text: '', categoryId: task?.categoryId, state: listState, dayKey });
+        renderSection(listState);
+        setTimeout(() => {
+          const newInput = document.querySelector(`.outliner-input[data-id="${newTask.id}"]`);
+          if (newInput) newInput.focus();
+        }, 0);
+        return;
+      }
+
+      if (e.key === 'Backspace' && !target.value) {
+        e.preventDefault();
+        DB.archiveTask(id);
+        renderSection(listState);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        clearTimeout(target._saveTimer);
+        target.value = target._originalValue ?? target.value;
+        DB.updateTask(id, { text: target.value });
+        target.blur();
+        return;
+      }
+    }
+  });
+
+  container.addEventListener('click', (e) => {
+    // Category collapse toggle
+    const toggleCat = e.target.closest('[data-toggle-cat]');
+    if (toggleCat) {
+      const catId = toggleCat.dataset.toggleCat;
+      if (state.collapsedCats.has(catId)) state.collapsedCats.delete(catId);
+      else state.collapsedCats.add(catId);
+      renderSection(listState);
+      return;
+    }
+
+    const action = e.target.dataset.action;
+    const id = e.target.dataset.id;
+    const catId = e.target.dataset.catId;
+
+    // Toggle detail panel
+    if (action === 'toggle-detail' && id) {
+      if (state.expandedTasks.has(id)) state.expandedTasks.delete(id);
+      else state.expandedTasks.add(id);
+      renderSection(listState);
+      return;
+    }
+
+    // Clear due date
+    if (action === 'clear-due' && id) {
+      DB.updateTask(id, { dueDate: '' });
+      renderSection(listState);
+      renderBriefingTasks();
+      return;
+    }
+
+    // Remove category (propagates to all sections)
+    if (action === 'remove-cat' && catId) {
+      if (!confirm(`Remove category "${DB.getCategories().find(c => c.id === catId)?.name}"? Tasks will become uncategorized.`)) return;
+      DB.deleteCategory(catId);
+      renderAllTaskSections();
+      return;
+    }
+
+    if (!action || !id) return;
+
+    if (action === 'toggle-urgent') { const t = DB.getTasks().find(t => t.id === id); const nowUrgent = !t?.urgent; DB.updateTask(id, { urgent: nowUrgent }); if (nowUrgent) DB.reorderTaskToTop(id); renderSection(listState); renderBriefingTasks(); }
+    else if (action === 'move-up') { DB.reorderTask(id, -1); renderSection(listState); setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0); }
+    else if (action === 'move-down') { DB.reorderTask(id, 1); renderSection(listState); setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0); }
+    else if (action === 'start') { DB.moveTask(id, 'inprogress'); renderSection(listState); renderInProgressSection(); }
+    else if (action === 'nextup') { DB.updateTask(id, { state: 'nextup', dayKey: undefined }); renderNextUpSection(); renderTodoSection(); }
+    else if (action === 'todo') { DB.updateTask(id, { state: 'todo', dayKey: state.viewDay }); renderNextUpSection(); renderTodoSection(); }
+    else if (action === 'done') { DB.moveTask(id, 'completed'); renderInProgressSection(); renderCompletedSection(); }
+    else if (action === 'back') { DB.updateTask(id, { state: 'todo', dayKey: state.viewDay }); renderInProgressSection(); renderTodoSection(); }
+    else if (action === 'archive') { DB.archiveTask(id); renderSection(listState); }
+  });
+}
+
+// ─── COMPLETED ACTIONS ────────────────────────────────────────────────────────
+function initCompletedDelegation() {
+  const container = document.getElementById('completed-list');
+  container.addEventListener('click', (e) => {
+    // Toggle date group collapse
+    const toggle = e.target.closest('[data-toggle-group]');
+    if (toggle) {
+      const group = toggle.closest('.completed-date-group');
+      if (group) { group.classList.toggle('collapsed'); }
+      return;
+    }
+    const action = e.target.dataset.action;
+    const id = e.target.dataset.id;
+    if (!action || !id) return;
+    if (action === 'restore') { DB.restoreTask(id, state.viewDay); renderCompletedSection(); renderTodoSection(); }
+    else if (action === 'archive') { DB.archiveTask(id); renderCompletedSection(); }
+  });
+}
+
+// ─── EVENTS ACTIONS ───────────────────────────────────────────────────────────
+function initEventsDelegation() {
+  const container = document.getElementById('events-list');
+  container.addEventListener('click', (e) => {
+    const action = e.target.dataset.action;
+    const id = e.target.dataset.id;
+    if (!action || !id) return;
+    if (action === 'toggle-event') {
+      const evt = DB.getEvents().find(ev => ev.id === id);
+      DB.updateEvent(id, { done: !evt?.done });
+      renderEventsSection();
+      renderCalendar();
+      renderBriefingGig();
+    } else if (action === 'archive-event') {
+      DB.archiveEvent(id);
+      renderEventsSection();
+      renderCalendar();
+      renderBriefingGig();
+    }
+  });
+
+  // Event form
+  const form = document.getElementById('event-form');
+  const showForm = () => { form.classList.add('open'); document.getElementById('event-name-input').focus(); };
+  const hideForm = () => { form.classList.remove('open'); document.getElementById('event-name-input').value = ''; document.getElementById('event-date-input').value = ''; document.getElementById('event-notes-input').value = ''; };
+
+  document.getElementById('btn-add-event').addEventListener('click', showForm);
+  document.getElementById('add-event-row').addEventListener('click', showForm);
+  document.getElementById('btn-cancel-event').addEventListener('click', hideForm);
+
+  document.getElementById('btn-save-event').addEventListener('click', () => {
+    const name = document.getElementById('event-name-input').value.trim();
+    const date = document.getElementById('event-date-input').value;
+    if (!name || !date) return;
+    const notes = document.getElementById('event-notes-input').value.trim();
+    DB.addEvent({ name, date, notes });
+    hideForm();
+    renderEventsSection();
+    renderCalendar();
+    renderBriefingGig();
+  });
+
+  document.getElementById('event-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('event-date-input').focus();
+  });
+  document.getElementById('event-date-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-save-event').click();
+  });
+}
+
+// ─── ARCHIVE OVERLAY ──────────────────────────────────────────────────────────
+function openArchiveOverlay() {
+  document.getElementById('archive-overlay').classList.add('open');
+  renderArchive();
+}
+function closeArchiveOverlay() { document.getElementById('archive-overlay').classList.remove('open'); }
+
+function renderArchive() {
+  const tab = state.archiveTab;
+  // Update tabs
+  document.querySelectorAll('.archive-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+
+  const body = document.getElementById('archive-body');
+  let html = '';
+
+  if (tab === 'grateful') {
+    const days = DB.getGratefulDays();
+    if (days.length === 0) { body.innerHTML = '<div class="archive-empty">No past entries yet.</div>'; return; }
+    days.forEach(dk => {
+      const entry = DB.getGrateful(dk);
+      if (!entry.text) return;
+      html += `<div>
+        <div class="archive-group-label">${DB.formatDateShort(dk)}</div>
+        <div class="archive-entry">${esc(entry.text)}</div>
+      </div>`;
+    });
+  } else if (tab === 'wants') {
+    const wants = DB.getWants();
+    if (wants.history && wants.history.length > 0) {
+      wants.history.forEach(h => {
+        const d = new Date(h.savedAt);
+        html += `<div>
+          <div class="archive-group-label">${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+          <div class="archive-entry">${esc(h.text)}</div>
+        </div>`;
+      });
+    } else {
+      html = '<div class="archive-empty">No history yet. History is saved when you edit your Wants.</div>';
+    }
+  } else if (tab === 'tasks') {
+    const archived = DB.getArchivedTasks();
+    if (archived.length === 0) { body.innerHTML = '<div class="archive-empty">No archived tasks yet.</div>'; return; }
+    archived.forEach(t => {
+      const d = t.archivedAt ? new Date(t.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+      html += `<div class="archive-entry">${esc(t.text)}<div class="archive-entry-meta">${d ? 'Archived ' + d : ''} · ${t.state}</div></div>`;
+    });
+  }
+
+  body.innerHTML = html || '<div class="archive-empty">Nothing here yet.</div>';
+}
+
+function initArchive() {
+  document.getElementById('btn-archive').addEventListener('click', openArchiveOverlay);
+  document.getElementById('btn-archive-close').addEventListener('click', closeArchiveOverlay);
+  document.getElementById('btn-nextup-archive')?.addEventListener('click', () => { state.archiveTab = 'tasks'; openArchiveOverlay(); });
+  document.getElementById('btn-todo-archive')?.addEventListener('click', () => { state.archiveTab = 'tasks'; openArchiveOverlay(); });
+
+  document.querySelectorAll('.archive-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      state.archiveTab = tab.dataset.tab;
+      renderArchive();
+    });
+  });
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function initNav() {
+  const mainEl = document.getElementById('main-scroll');
+  const sectionIds = ['s-briefing','s-grateful','s-wants','s-nextup','s-todo','s-inprogress','s-completed','s-events'];
+
+  mainEl.addEventListener('scroll', () => {
+    const scrollY = mainEl.scrollTop;
+    let active = sectionIds[0];
+    sectionIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.offsetTop - 80 <= scrollY) active = id;
+    });
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.toggle('active', n.dataset.section === active);
+    });
+  }, { passive: true });
+
+  document.querySelectorAll('.nav-item[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.getElementById(a.getAttribute('href').slice(1));
+      if (target) mainEl.scrollTo({ top: target.offsetTop - 20, behavior: 'smooth' });
+    });
+  });
+}
+
+// ─── CALENDAR INTERACTIONS ────────────────────────────────────────────────────
+function initCalendar() {
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    state.calMonth.month--;
+    if (state.calMonth.month < 0) { state.calMonth.month = 11; state.calMonth.year--; }
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    state.calMonth.month++;
+    if (state.calMonth.month > 11) { state.calMonth.month = 0; state.calMonth.year++; }
+    renderCalendar();
+  });
+  document.getElementById('cal-grid').addEventListener('click', (e) => {
+    const day = e.target.closest('.mini-cal-day');
+    if (day && day.dataset.date) {
+      state.viewDay = day.dataset.date;
+      state.calMonth = { year: parseInt(day.dataset.date.slice(0,4)), month: parseInt(day.dataset.date.slice(5,7)) - 1 };
+      renderAll();
+    }
+  });
+
+  document.getElementById('btn-prev-day').addEventListener('click', () => {
+    state.viewDay = DB.offsetDate(state.viewDay, -1);
+    const d = new Date(state.viewDay + 'T00:00:00');
+    state.calMonth = { year: d.getFullYear(), month: d.getMonth() };
+    renderAll();
+  });
+  document.getElementById('btn-next-day').addEventListener('click', () => {
+    const today = DB.todayKey();
+    if (state.viewDay >= today) return;
+    state.viewDay = DB.offsetDate(state.viewDay, 1);
+    const d = new Date(state.viewDay + 'T00:00:00');
+    state.calMonth = { year: d.getFullYear(), month: d.getMonth() };
+    renderAll();
+  });
+}
+
+// ─── NEW DAY CHECK ────────────────────────────────────────────────────────────
+function checkNewDay() {
+  const data = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } })();
+  const today = DB.todayKey();
+  if (data.lastDay && data.lastDay !== today) {
+    const allSections = ['s-grateful','s-wants','s-nextup','s-todo','s-inprogress','s-completed','s-events'];
+    localStorage.setItem('collapsed_sections', JSON.stringify(allSections));
+  }
+  data.lastDay = today;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ─── SECTION COLLAPSE ─────────────────────────────────────────────────────────
+function getCollapsedSections() {
+  try { return new Set(JSON.parse(localStorage.getItem('collapsed_sections') || '[]')); }
+  catch { return new Set(); }
+}
+function saveCollapsedSections(set) {
+  localStorage.setItem('collapsed_sections', JSON.stringify([...set]));
+}
+
+function initSectionCollapse() {
+  const collapsed = getCollapsedSections();
+  const taskSections = ['s-nextup','s-todo','s-inprogress','s-completed'];
+
+  // If no task section has a saved state, default to Next Up open, rest collapsed
+  const hasAnySaved = taskSections.some(id => collapsed.has(id));
+  if (!hasAnySaved) {
+    taskSections.forEach(id => { if (id !== 's-nextup') collapsed.add(id); });
+    saveCollapsedSections(collapsed);
+  }
+
+  document.querySelectorAll('.section').forEach(section => {
+    const header = section.querySelector('.section-header');
+    if (!header) return;
+
+    // Add chevron to the right side of the header
+    const chevron = document.createElement('span');
+    chevron.className = 'section-chevron';
+    chevron.textContent = '▾';
+    const actions = header.querySelector('.section-header-actions');
+    if (actions) {
+      actions.appendChild(chevron);
+    } else {
+      chevron.style.marginLeft = 'auto';
+      header.appendChild(chevron);
+    }
+
+    // Restore persisted state
+    if (collapsed.has(section.id)) section.classList.add('collapsed');
+
+    header.addEventListener('click', e => {
+      if (e.target.closest('.section-header-actions') && !e.target.classList.contains('section-chevron')) return;
+      const isTaskSection = taskSections.includes(section.id);
+      const wasCollapsed = section.classList.contains('collapsed');
+
+      // Accordion: opening a task section collapses the other three
+      if (isTaskSection && wasCollapsed) {
+        const set = getCollapsedSections();
+        taskSections.forEach(sid => {
+          if (sid === section.id) return;
+          const other = document.getElementById(sid);
+          if (other && !other.classList.contains('collapsed')) {
+            other.classList.add('collapsed');
+            set.add(sid);
+          }
+        });
+        saveCollapsedSections(set);
+      }
+
+      section.classList.toggle('collapsed');
+      const set = getCollapsedSections();
+      section.classList.contains('collapsed') ? set.add(section.id) : set.delete(section.id);
+      saveCollapsedSections(set);
+
+      // Stagger animation on expand for task sections
+      if (isTaskSection && wasCollapsed) {
+        section.classList.add('section-expanding');
+        section.querySelectorAll('.outliner-row').forEach((row, i) => row.style.setProperty('--row-i', i));
+        setTimeout(() => section.classList.remove('section-expanding'), 800);
+      }
+    });
+  });
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  renderSidebarDate();
+  renderCalendar();
+  renderGrateful();
+  renderNextUpSection();
+  renderTodoSection();
+  renderInProgressSection();
+  renderCompletedSection();
+  renderEventsSection();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  checkNewDay();
+  initSectionCollapse();
+  initGrateful();
+  initWants();
+  initTaskDelegation('nextup-outliner', 'nextup');
+  initTaskDelegation('todo-outliner', 'todo');
+  initTaskDelegation('inprogress-outliner', 'inprogress');
+  initCompletedDelegation();
+  initEventsDelegation();
+  initArchive();
+  initNav();
+  initCalendar();
+
+  // Set today's date input default for event form
+  document.getElementById('event-date-input').value = DB.todayKey();
+
+  renderBriefingGreeting();
+  renderBriefingQuote();
+  renderOnThisDay();
+  renderBriefingGig();
+  renderBriefingTasks();
+  renderAll();
+  renderWants();
+
+  // Set first nav item active
+  document.querySelector('.nav-item[data-section="s-grateful"]')?.classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+</body>
+</html>
