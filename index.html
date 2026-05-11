@@ -503,7 +503,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
           <div class="notebook-label">Things I want — in any sense of the word</div>
           <textarea id="wants-textarea" style="min-height:160px" placeholder="Material things, experiences, feelings, changes..."></textarea>
           <div class="notebook-footer">
-            <span class="notebook-hint">Persists · edit anytime · versions saved to archive</span>
+            <span class="notebook-hint" id="wants-hint">Persists · edit anytime · versions saved to archive</span>
             <span class="notebook-archive-btn" id="btn-wants-archive2">View history →</span>
           </div>
         </div>
@@ -676,20 +676,20 @@ const DB = (() => {
   }
 
   // ── Wants ──
-  function getWants() {
+  function getWants(dk) {
     const data = load();
-    return data.wants || { text: '', history: [] };
+    return (data.wants && data.wants[dk]) || { text: '' };
   }
-  function setWants(text) {
+  function setWants(dk, text) {
     const data = load();
-    const prev = data.wants || { text: '', history: [] };
-    if (prev.text && prev.text !== text) {
-      prev.history = prev.history || [];
-      prev.history.unshift({ text: prev.text, savedAt: Date.now() });
-      if (prev.history.length > 50) prev.history = prev.history.slice(0, 50);
-    }
-    data.wants = { text, history: prev.history || [], savedAt: Date.now() };
+    if (!data.wants || data.wants.history) data.wants = {};
+    data.wants[dk] = { text, savedAt: Date.now() };
     save(data);
+  }
+  function getWantsDays() {
+    const data = load();
+    if (!data.wants || data.wants.history) return [];
+    return Object.keys(data.wants).filter(k => data.wants[k].text).sort().reverse();
   }
 
   // ── Tasks ──
@@ -882,7 +882,7 @@ const DB = (() => {
   return {
     dateKey, todayKey, offsetDate, formatDateShort,
     getGrateful, setGrateful, getGratefulDays,
-    getWants, setWants,
+    getWants, setWants, getWantsDays,
     getTasks, saveTasks, addTask, insertTaskAfter, updateTask, archiveTask, moveTask, restoreTask, reorderTask, reorderTaskToTop, genId,
     getEvents, addEvent, updateEvent, archiveEvent,
     getArchivedTasks,
@@ -1237,10 +1237,16 @@ function initGrateful() {
 let wantsSaveTimer = null;
 
 function renderWants() {
-  const wants = DB.getWants();
+  const entry = DB.getWants(state.viewDay);
   const ta = document.getElementById('wants-textarea');
-  ta.value = wants.text || '';
+  ta.value = entry.text || '';
   autoResize(ta);
+  const isToday = state.viewDay === DB.todayKey();
+  document.getElementById('wants-hint').textContent = isToday
+    ? 'Saved as you type · previous days saved to archive'
+    : `Viewing ${formatDayLabel(state.viewDay)} · read-only`;
+  ta.readOnly = !isToday;
+  ta.style.opacity = isToday ? '' : '0.75';
 }
 
 function initWants() {
@@ -1248,7 +1254,7 @@ function initWants() {
   ta.addEventListener('input', () => {
     autoResize(ta);
     clearTimeout(wantsSaveTimer);
-    wantsSaveTimer = setTimeout(() => { DB.setWants(ta.value); }, 600);
+    wantsSaveTimer = setTimeout(() => { DB.setWants(state.viewDay, ta.value); }, 400);
   });
   const openArchive = () => { state.archiveTab = 'wants'; openArchiveOverlay(); };
   document.getElementById('btn-wants-archive').addEventListener('click', openArchive);
@@ -2025,17 +2031,18 @@ function renderArchive() {
       </div>`;
     });
   } else if (tab === 'wants') {
-    const wants = DB.getWants();
-    if (wants.history && wants.history.length > 0) {
-      wants.history.forEach(h => {
-        const d = new Date(h.savedAt);
+    const days = DB.getWantsDays();
+    if (days.length > 0) {
+      days.forEach(dk => {
+        const entry = DB.getWants(dk);
+        if (!entry.text) return;
         html += `<div>
-          <div class="archive-group-label">${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
-          <div class="archive-entry">${esc(h.text)}</div>
+          <div class="archive-group-label">${DB.formatDateShort(dk)}</div>
+          <div class="archive-entry">${esc(entry.text)}</div>
         </div>`;
       });
     } else {
-      html = '<div class="archive-empty">No history yet. History is saved when you edit your Wants.</div>';
+      html = '<div class="archive-empty">No history yet. Wants are saved as you type.</div>';
     }
   } else if (tab === 'tasks') {
     const archived = DB.getArchivedTasks();
@@ -2217,6 +2224,7 @@ function renderAll() {
   renderSidebarDate();
   renderCalendar();
   renderGrateful();
+  renderWants();
   renderNextUpSection();
   renderTodoSection();
   renderInProgressSection();
@@ -2254,7 +2262,6 @@ function init() {
   renderBriefingGig();
   renderBriefingTasks();
   renderAll();
-  renderWants();
 
   // Set first nav item active
   document.querySelector('.nav-item[data-section="s-grateful"]')?.classList.add('active');
