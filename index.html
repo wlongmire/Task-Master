@@ -79,6 +79,10 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .mini-cal-day.today.has-event::after { background: var(--accent-fg); }
 .mini-cal-day.other-month { color: #333230; }
 .mini-cal-day.selected-day { outline: 1px solid var(--accent); }
+.mini-cal-day.has-entry { color: var(--text); background: var(--surface3); }
+.mini-cal-day.has-entry:hover { background: var(--border2); }
+.mini-cal-day.today.has-entry { background: var(--accent); color: var(--accent-fg); }
+.mini-cal-day.other-month.has-entry { color: #555250; background: var(--surface2); }
 
 /* ── NAV ── */
 .nav-group-label { padding: 14px 18px 5px; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: #666360; font-weight: 500; }
@@ -99,8 +103,8 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .sidebar-footer-btn:hover { color: var(--text); }
 
 /* ── MAIN ── */
-.main { margin-left: var(--sidebar-w); height: 100vh; display: flex; flex-direction: column; overflow: hidden; flex: 1; }
-.sections-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; padding: 0 52px 400px; position: relative; }
+.main { margin-left: var(--sidebar-w); height: 100vh; display: grid; grid-template-rows: auto 1fr; overflow: hidden; flex: 1; }
+.sections-scroll { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; padding: 0 52px 400px; position: relative; min-height: 0; }
 
 /* ── SECTIONS ── */
 .section { border-bottom: 1px solid var(--border); padding: 36px 0 32px; }
@@ -198,9 +202,22 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .completed-item:hover { background: var(--surface); }
 .completed-check { width: 14px; height: 14px; border: 1.5px solid var(--green); background: var(--green); border-radius: 3px; flex-shrink: 0; }
 .completed-title { font-family: var(--font-ui); font-size: 14px; color: var(--text-dimmer); text-decoration: line-through; flex: 1; }
-.completed-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); white-space: nowrap; }
+.completed-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); white-space: nowrap; margin-left: auto; flex-shrink: 0; }
 .completed-actions { display: flex; gap: 4px; opacity: 0; flex-shrink: 0; }
 .completed-item:hover .completed-actions { opacity: 1; }
+.completed-check.partial { background: transparent; border-color: var(--accent); display: grid; place-items: center; font-size: 10px; color: var(--accent); line-height: 1; }
+.completed-item.is-partial .completed-title { text-decoration: none; font-style: italic; color: var(--text-dim); }
+.partial-log-note { font-size: 11px; font-style: normal; color: var(--text-dimmer); font-family: var(--font-mono); }
+.task-log-icon-inline { font-family: var(--font-mono); font-size: 9px; color: var(--accent); letter-spacing: 0.04em; flex-shrink: 0; opacity: 0.8; }
+.partial-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 400; display: flex; align-items: center; justify-content: center; }
+.partial-popup { background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 24px; width: 380px; max-width: 92vw; box-shadow: 0 24px 64px rgba(0,0,0,0.5); }
+.partial-popup-eyebrow { font-family: var(--font-mono); font-size: 9px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+.partial-popup-task { font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+.partial-popup-ta { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 10px 12px; font-family: var(--font-ui); font-size: 13px; color: var(--text); outline: none; resize: none; min-height: 80px; line-height: 1.5; }
+.partial-popup-ta:focus { border-color: var(--accent); }
+.partial-popup-ta::placeholder { color: var(--text-dimmer); }
+.partial-popup-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.partial-popup-hint { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); margin-top: 8px; letter-spacing: 0.04em; }
 
 /* ── EVENTS ── */
 .wf-event { display: flex; align-items: flex-start; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-bottom: 6px; transition: border-color 0.1s; }
@@ -274,8 +291,9 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 }
 
 /* ── TASK DETAIL EXPAND ── */
-.outliner-task-line { display: flex; align-items: center; }
-.outliner-task-line .outliner-input { flex: 1; }
+.outliner-task-line { display: flex; align-items: center; gap: 6px; }
+.outliner-task-line .outliner-input { flex: 1; width: auto; min-width: 0; }
+.task-row-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding-top: 7px; }
 .task-due-badge { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); background: var(--surface3); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; margin-left: 8px; white-space: nowrap; flex-shrink: 0; }
 .task-due-badge.overdue { color: var(--red); border-color: var(--red); }
 .task-due-badge.due-today { color: var(--accent); border-color: var(--accent-dim); }
@@ -285,18 +303,13 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   .main { margin-left: 0; }
   .briefing { padding: 32px 24px 28px; }
   .sections-scroll { padding-left: 24px; padding-right: 24px; }
+  .briefing { padding: 32px 24px 28px; }
   .task-urgent-badge { display: none; }
 }
 
 @media (max-width: 900px) {
   .outliner-row { flex-wrap: wrap; }
-  .outliner-row-actions {
-    opacity: 1;
-    flex-basis: 100%;
-    padding-left: 23px;
-    padding-top: 2px;
-    padding-bottom: 4px;
-  }
+  .outliner-row-actions { opacity: 1; flex-basis: 100%; padding-left: 23px; padding-top: 2px; padding-bottom: 4px; }
   .completed-item { flex-wrap: wrap; }
   .completed-actions {
     opacity: 1;
@@ -324,13 +337,32 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .task-due-input:focus { border-color: var(--accent); color: var(--text); }
 .task-detail-clear { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); cursor: pointer; padding: 2px 6px; border: 1px solid transparent; border-radius: 2px; }
 .task-detail-clear:hover { color: var(--text); border-color: var(--border2); }
+.task-description { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 7px 9px; font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); line-height: 1.5; resize: none; outline: none; min-height: 40px; box-sizing: border-box; }
+.task-description:focus { border-color: var(--accent); color: var(--text); }
+.task-description::placeholder { color: var(--text-dimmer); }
+.task-log-header { font-family: var(--font-mono); font-size: 9px; color: var(--accent-fg); opacity: 0.6; letter-spacing: 0.08em; text-transform: uppercase; margin: 8px 0 4px; }
+.task-log-scroll { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; }
+.task-log-entry { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid oklch(60% 0.1 290 / 0.3); }
+.task-log-entry:last-child { border-bottom: none; }
+.task-log-icon { font-size: 11px; flex-shrink: 0; width: 16px; text-align: center; color: var(--accent-fg); opacity: 0.7; }
+.task-log-note { font-family: var(--font-mono); font-size: 11px; color: var(--accent-fg); flex: 1; line-height: 1.4; }
+.task-log-time { font-family: var(--font-mono); font-size: 9px; color: var(--accent-fg); opacity: 0.6; flex-shrink: 0; margin-left: auto; }
+.task-log-entry.type-created .task-log-icon { opacity: 0.4; }
+.task-log-entry.type-started .task-log-icon { opacity: 0.9; }
+.task-log-entry.type-progress .task-log-icon { opacity: 0.9; }
+.task-log-entry.type-done .task-log-icon { color: var(--green); opacity: 1; }
 
 .outliner-notes-preview { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); margin-top: 2px; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: none; }
 .outliner-row:hover .outliner-notes-preview { display: block; }
 
 /* ── DAILY BRIEFING ── */
-.briefing { padding: 44px 52px 36px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
-.briefing-greeting { font-family: var(--font-ui); font-size: 38px; font-weight: 600; color: var(--accent); letter-spacing: -0.03em; margin-bottom: 24px; }
+.briefing { padding: 44px 52px 36px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.briefing-greeting { font-family: var(--font-ui); font-size: 38px; font-weight: 600; color: var(--accent); letter-spacing: -0.03em; margin-bottom: 8px; }
+.briefing-dateline { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.briefing-dateline > span:first-child { font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); letter-spacing: 0.02em; }
+.briefing-time { font-family: var(--font-mono); font-size: 13px; color: var(--text-dimmer); }
+.briefing-today-btn { font-family: var(--font-mono); font-size: 10px; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-dim); border-radius: 3px; padding: 2px 8px; cursor: pointer; letter-spacing: 0.06em; }
+.briefing-today-btn:hover { border-color: var(--accent); }
 .briefing-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .briefing-otd { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; }
 .briefing-otd:first-of-type { margin-top: 0; }
@@ -392,6 +424,11 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
       <!-- 00 DAILY BRIEFING -->
       <div class="briefing" id="s-briefing">
         <div class="briefing-greeting" id="briefing-greeting"></div>
+        <div class="briefing-dateline">
+          <span id="briefing-date"></span>
+          <span class="briefing-time" id="briefing-time"></span>
+          <button class="briefing-today-btn" id="briefing-today-btn" style="display:none">↩ Today</button>
+        </div>
         <div class="briefing-otd">
           <div class="briefing-otd-label">Quote</div>
           <div class="briefing-otd-body">
@@ -602,7 +639,12 @@ const DB = (() => {
   }
   function save(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
-  function dateKey(date) { return date.toISOString().slice(0, 10); }
+  function dateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
   function todayKey() { return dateKey(new Date()); }
 
   function offsetDate(key, delta) {
@@ -664,14 +706,17 @@ const DB = (() => {
   }
   function addTask(task) {
     const tasks = getTasks();
-    tasks.push({ id: genId(), dateCreated: Date.now(), archived: false, ...task });
+    const now = Date.now();
+    const newTask = { id: genId(), dateCreated: now, archived: false, log: [{ id: now + '-c', type: 'created', note: null, loggedAt: now }], ...task };
+    tasks.push(newTask);
     saveTasks(tasks);
-    return tasks[tasks.length - 1];
+    return newTask;
   }
   function insertTaskAfter(afterId, task) {
     const tasks = getTasks();
     const idx = tasks.findIndex(t => t.id === afterId);
-    const newTask = { id: genId(), dateCreated: Date.now(), archived: false, ...task };
+    const now = Date.now();
+    const newTask = { id: genId(), dateCreated: now, archived: false, log: [{ id: now + '-c', type: 'created', note: null, loggedAt: now }], ...task };
     if (idx === -1) tasks.push(newTask);
     else tasks.splice(idx + 1, 0, newTask);
     saveTasks(tasks);
@@ -784,6 +829,50 @@ const DB = (() => {
     save(data);
   }
 
+  // ── Daily briefing cache (quote + OTD per day) ──
+  function getDailyBriefing(dk) {
+    const data = load();
+    return (data.dailyBriefing && data.dailyBriefing[dk]) || null;
+  }
+  function setDailyBriefing(dk, patch) {
+    const data = load();
+    if (!data.dailyBriefing) data.dailyBriefing = {};
+    data.dailyBriefing[dk] = { ...(data.dailyBriefing[dk] || {}), ...patch };
+    save(data);
+  }
+
+  // ── Task Log ──
+  function addLogEntry(taskId, { type, note = null }) {
+    const tasks = getTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return;
+    const entry = { id: String(Date.now()), type, note, loggedAt: Date.now() };
+    if (!tasks[idx].log) tasks[idx].log = [];
+    tasks[idx].log.push(entry);
+    saveTasks(tasks);
+    return entry;
+  }
+
+  function migrateToV2() {
+    const data = load();
+    if ((data.schemaVersion || 1) >= 2) return;
+    (data.tasks || []).forEach(t => {
+      if (t.notes !== undefined) { delete t.notes; }
+      if (!t.log) {
+        const log = [];
+        if (t.dateCreated) log.push({ id: t.dateCreated + '-c', type: 'created', note: null, loggedAt: t.dateCreated });
+        if (t.dateStarted) log.push({ id: t.dateStarted + '-s', type: 'started', note: null, loggedAt: t.dateStarted });
+        (t.partialLogs || []).forEach(pl => log.push({ id: pl.id, type: 'progress', note: pl.note, loggedAt: pl.loggedAt }));
+        if (t.dateCompleted) log.push({ id: t.dateCompleted + '-d', type: 'done', note: null, loggedAt: t.dateCompleted });
+        log.sort((a, b) => a.loggedAt - b.loggedAt);
+        t.log = log;
+        delete t.partialLogs;
+      }
+    });
+    data.schemaVersion = 2;
+    save(data);
+  }
+
   // Archived tasks
   function getArchivedTasks() {
     const data = load();
@@ -798,6 +887,8 @@ const DB = (() => {
     getEvents, addEvent, updateEvent, archiveEvent,
     getArchivedTasks,
     getCategories, addCategory, updateCategory, deleteCategory,
+    getDailyBriefing, setDailyBriefing,
+    addLogEntry, migrateToV2,
   };
 })();
 
@@ -807,6 +898,7 @@ const state = {
   calMonth: (() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; })(),
   collapsedCats: new Set(),
   expandedTasks: new Set(),
+  manuallyExpandedCats: new Set(),
   archiveTab: 'grateful',
 };
 
@@ -929,12 +1021,13 @@ function getDayOfYear() {
 
 
 function renderBriefingGig() {
+  const el = document.getElementById('briefing-gig');
+  if (!el) return;
+  if (state.viewDay !== DB.todayKey()) { el.style.display = 'none'; return; }
+
   const next = DB.getEvents()
     .filter(e => !e.done && daysUntil(e.date) >= 0)
     .sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0];
-
-  const el = document.getElementById('briefing-gig');
-  if (!el) return;
 
   if (!next) { el.style.display = 'none'; return; }
 
@@ -965,9 +1058,11 @@ function renderBriefingTasks() {
     urgentEl.style.display = 'none';
   }
 
-  // Next task with a due date (soonest non-overdue first, then overdue)
+  // Next task with a due date — today only
   const today = DB.todayKey();
-  const withDue = tasks.filter(t => t.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+  const withDue = state.viewDay === today
+    ? tasks.filter(t => t.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]
+    : null;
   const deadlineEl = document.getElementById('briefing-deadline');
   if (withDue) {
     const diff = Math.round((new Date(withDue.dueDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
@@ -984,41 +1079,79 @@ function renderBriefingGreeting() {
   const h = new Date().getHours();
   const period = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
   document.getElementById('briefing-greeting').textContent = `Good ${period}, Warren.`;
+  renderBriefingDateline();
+}
+
+function renderBriefingDateline() {
+  const today = DB.todayKey();
+  const dk = state.viewDay;
+  const d = new Date(dk + 'T00:00:00');
+  const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  document.getElementById('briefing-date').textContent = dateStr;
+
+  const todayBtn = document.getElementById('briefing-today-btn');
+  todayBtn.style.display = dk !== today ? '' : 'none';
+  todayBtn.onclick = () => {
+    state.viewDay = today;
+    renderAll();
+    renderBriefingGreeting();
+  };
+
+  // Live clock — update every second
+  if (window._clockInterval) clearInterval(window._clockInterval);
+  const tick = () => {
+    const now = new Date();
+    document.getElementById('briefing-time').textContent =
+      now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  };
+  tick();
+  window._clockInterval = setInterval(tick, 1000);
 }
 
 function renderBriefingQuote() {
-  const idx = getDayOfYear() % QUOTES.length;
-  const { q, a } = QUOTES[idx];
+  const dk = state.viewDay;
+  const d = new Date(dk + 'T00:00:00');
+  const doy = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  const { q, a } = QUOTES[doy % QUOTES.length];
   document.getElementById('briefing-quote').textContent = `"${q}"`;
   document.getElementById('briefing-author').textContent = `— ${a}`;
 }
 
 async function renderOnThisDay() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+  const dk = state.viewDay;
+  const cached = DB.getDailyBriefing(dk);
+  if (cached?.otdText) {
+    document.getElementById('otd-year').textContent = cached.otdYear || '';
+    document.getElementById('otd-text').textContent = cached.otdText;
+    return;
+  }
+  const d = new Date(dk + 'T00:00:00');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const doy = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  const setOTD = (year, text) => {
+    document.getElementById('otd-year').textContent = year;
+    document.getElementById('otd-text').textContent = text;
+    DB.setDailyBriefing(dk, { otdYear: year, otdText: text });
+  };
   try {
     const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/selected/${month}/${day}`);
     const data = await res.json();
     const items = data.selected || data.events || [];
     if (!items.length) throw new Error('empty');
-    // Pick one deterministically by day-of-year
-    const item = items[getDayOfYear() % items.length];
-    document.getElementById('otd-year').textContent = item.year;
-    document.getElementById('otd-text').textContent = item.text;
+    const item = items[doy % items.length];
+    setOTD(item.year, item.text);
   } catch {
-    // Fall back to events endpoint
     try {
       const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`);
       const data = await res.json();
       const items = data.events || [];
       if (!items.length) throw new Error('empty');
-      const item = items[getDayOfYear() % items.length];
-      document.getElementById('otd-year').textContent = item.year;
-      document.getElementById('otd-text').textContent = item.text;
+      const item = items[doy % items.length];
+      setOTD(item.year, item.text);
     } catch {
       document.getElementById('otd-year').textContent = '';
-      document.getElementById('otd-text').textContent = 'Could not load today\'s event.';
+      document.getElementById('otd-text').textContent = 'Could not load event.';
     }
   }
 }
@@ -1029,6 +1162,9 @@ function renderCalendar() {
   const today = DB.todayKey();
   const events = DB.getEvents();
   const eventDates = new Set(events.map(e => e.date));
+  const gratefulDays = new Set(DB.getGratefulDays());
+  const todoDays = new Set(DB.getTasks().filter(t => !t.archived && t.dayKey).map(t => t.dayKey));
+  const entryDays = new Set([...gratefulDays, ...todoDays]);
 
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('cal-month-label').textContent = monthNames[month] + ' ' + year;
@@ -1053,6 +1189,7 @@ function renderCalendar() {
     if (key === today) cls += ' today';
     if (key === state.viewDay && key !== today) cls += ' selected-day';
     if (eventDates.has(key)) cls += ' has-event';
+    if (entryDays.has(key)) cls += ' has-entry';
     html += `<div class="${cls}" data-date="${key}">${c.day}</div>`;
   });
 
@@ -1126,17 +1263,18 @@ function renderTaskRow(task, listState) {
 
   let actions = '';
   if (listState === 'nextup') {
-    actions = `<div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
+    actions = `<div class="outliner-action go" data-action="todo" data-id="${task.id}">→ Todo</div>
                <div class="outliner-action go" data-action="start" data-id="${task.id}">▶ Start</div>
-               <div class="outliner-action" data-action="todo" data-id="${task.id}">← Back</div>
+               <div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
                <div class="outliner-action" data-action="archive" data-id="${task.id}">Archive</div>`;
   } else if (listState === 'todo') {
-    actions = `<div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
-               <div class="outliner-action go" data-action="start" data-id="${task.id}">▶ Start</div>
+    actions = `<div class="outliner-action go" data-action="start" data-id="${task.id}">▶ Start</div>
+               <div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
                <div class="outliner-action" data-action="nextup" data-id="${task.id}">← Back</div>
                <div class="outliner-action" data-action="archive" data-id="${task.id}">Archive</div>`;
   } else if (listState === 'inprogress') {
-    actions = `<div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
+    actions = `<div class="outliner-action" data-action="log-progress" data-id="${task.id}" title="Log progress">◐ Progress</div>
+               <div class="outliner-action go" data-action="done" data-id="${task.id}">✓ Done</div>
                <div class="outliner-action" data-action="back" data-id="${task.id}">← Back</div>
                <div class="outliner-action" data-action="archive" data-id="${task.id}">Archive</div>`;
   }
@@ -1155,17 +1293,35 @@ function renderTaskRow(task, listState) {
 
   // Expanded detail panel
   const clearBtn = task.dueDate ? `<span class="task-detail-clear" data-action="clear-due" data-id="${task.id}">✕ clear</span>` : '';
+  const logEntries = task.log || [];
+  const logIconMap = { created: '·', started: '→', progress: '◐', done: '✓' };
+  const logColorMap = { created: 'type-created', started: 'type-started', progress: 'type-progress', done: 'type-done' };
+  const logHtml = logEntries.length ? logEntries.map(e => {
+    const t = new Date(e.loggedAt);
+    const timeStr = t.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ', ' + t.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const noteHtml = e.note ? `<span class="task-log-note">${esc(e.note)}</span>` : `<span class="task-log-note" style="opacity:0.4">${e.type}</span>`;
+    return `<div class="task-log-entry ${logColorMap[e.type] || ''}">
+      <span class="task-log-icon">${logIconMap[e.type] || '·'}</span>
+      ${noteHtml}
+      <span class="task-log-time">${timeStr}</span>
+    </div>`;
+  }).join('') : `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dimmer);padding:4px 0">No log entries yet</div>`;
+
   const detailPanel = isExpanded ? `<div class="task-detail">
-    <textarea class="task-notes" data-id="${task.id}" placeholder="Add notes…" rows="2">${esc(task.notes || '')}</textarea>
+    <textarea class="task-description" data-id="${task.id}" placeholder="Description (optional)…" rows="2">${esc(task.description || '')}</textarea>
     <div class="task-detail-meta">
       <span class="task-detail-label">Due</span>
       <input class="task-due-input" type="date" data-id="${task.id}" value="${task.dueDate || ''}" />
       ${clearBtn}
     </div>
+    <div class="task-log-header">Activity Log</div>
+    <div class="task-log-scroll">${logHtml}</div>
   </div>` : '';
 
   const startedMeta = listState === 'inprogress' && task.dateStarted
     ? `<div class="outliner-input-meta">Started ${new Date(task.dateStarted).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>` : '';
+  const progressCount = logEntries.filter(e => e.type === 'progress').length;
+  const logIcon = progressCount ? `<span class="task-log-icon-inline" title="${progressCount} progress log${progressCount > 1 ? 's' : ''}">◐ ${progressCount}</span>` : '';
 
   const detailToggle = `<div class="outliner-action" data-action="toggle-detail" data-id="${task.id}" title="Notes &amp; due date">${isExpanded ? '▲' : '···'}</div>`;
   const reorderBtns = `<div class="outliner-action" data-action="move-up" data-id="${task.id}" title="Move up (⇧↑)">↑</div><div class="outliner-action" data-action="move-down" data-id="${task.id}" title="Move down (⇧↓)">↓</div>`;
@@ -1177,13 +1333,13 @@ function renderTaskRow(task, listState) {
     <div class="outliner-input-wrap">
       <div class="outliner-task-line">
         <input class="outliner-input${task.done ? ' is-done' : ''}" data-id="${task.id}" value="${esc(task.text || '')}" placeholder="Task..." />
-        ${dueBadge}
       </div>
       ${task.urgent ? `<div>${urgentBadge}</div>` : ''}
-      ${!isExpanded && task.notes ? `<div class="outliner-notes-preview">${esc(task.notes.split('\n')[0])}</div>` : ''}
+      ${!isExpanded && task.description ? `<div class="outliner-notes-preview">${esc(task.description.split('\n')[0])}</div>` : ''}
       ${startedMeta}
       ${detailPanel}
     </div>
+    ${(logIcon || dueBadge) ? `<div class="task-row-badges">${logIcon}${dueBadge}</div>` : ''}
     <div class="outliner-row-actions">${urgentBtn}${reorderBtns}${detailToggle}${actions}</div>
   </div>`;
 }
@@ -1253,8 +1409,9 @@ function renderOutliner(containerId, listState) {
 
   // Category groups
   sortedCategories.forEach(cat => {
-    const isCollapsed = state.collapsedCats.has(cat.id);
     const catTasks = tasks.filter(t => t.categoryId === cat.id);
+    const isEmpty = catTasks.length === 0;
+    const isCollapsed = state.collapsedCats.has(cat.id) || (isEmpty && !state.manuallyExpandedCats.has(cat.id));
 
     html += `<div class="outliner-row is-category-row${isCollapsed ? ' cat-collapsed' : ''}" style="margin-top:12px">
       <div class="cat-chevron" data-toggle-cat="${cat.id}">▾</div>
@@ -1307,16 +1464,26 @@ function renderInProgressSection() {
 
 function renderCompletedSection() {
   const tasks = DB.getTasks().filter(t => !t.archived && t.state === 'completed');
+  const inProgress = DB.getTasks().filter(t => !t.archived && t.state === 'inprogress');
   const cats = DB.getCategories();
   const catMap = Object.fromEntries(cats.map(c => [c.id, c.name]));
 
-  // Group by date
+  // Group full completions and progress log entries together by date
   const groups = {};
   tasks.forEach(t => {
     const dk = t.dateCompleted ? DB.dateKey(new Date(t.dateCompleted)) : 'unknown';
     if (!groups[dk]) groups[dk] = [];
-    groups[dk].push(t);
+    const lastLog = t.log ? [...t.log].reverse().find(e => e.note) : null;
+    groups[dk].push({ _type: 'full', _time: t.dateCompleted || 0, _lastNote: lastLog?.note || null, ...t });
   });
+  inProgress.forEach(t => {
+    (t.log || []).filter(e => e.type === 'progress').forEach(entry => {
+      const dk = DB.dateKey(new Date(entry.loggedAt));
+      if (!groups[dk]) groups[dk] = [];
+      groups[dk].push({ _type: 'partial', _time: entry.loggedAt, taskText: t.text, taskId: t.id, taskCategoryId: t.categoryId, note: entry.note, id: entry.id });
+    });
+  });
+  Object.keys(groups).forEach(dk => groups[dk].sort((a, b) => b._time - a._time));
 
   const sortedDates = Object.keys(groups).sort().reverse();
   const container = document.getElementById('completed-list');
@@ -1342,18 +1509,36 @@ function renderCompletedSection() {
     html += `<div class="completed-date-group${collapsed ? ' collapsed' : ''}" data-date-group="${dk}">
       <div class="completed-date completed-date-toggle" data-toggle-group="${dk}">${label}${isOlder ? ` <span style="opacity:0.5;font-size:8px">▸ ${groups[dk].length} items</span>` : ''}</div>
       <div class="completed-group-items">`;
-    groups[dk].forEach(t => {
-      const time = t.dateCompleted ? new Date(t.dateCompleted).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+    groups[dk].forEach(item => {
+      const time = new Date(item._time).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      if (item._type === 'partial') {
+        const partialCatName = item.taskCategoryId && catMap[item.taskCategoryId] ? esc(catMap[item.taskCategoryId]) : '';
+        const partialCatBadge = partialCatName ? `<span class="cat-label-badge" style="margin-top:0;margin-left:6px">${partialCatName}</span>` : '';
+        html += `<div class="completed-item is-partial">
+          <div class="completed-check partial">◐</div>
+          <div class="completed-title" style="display:flex;flex-direction:column;gap:2px">
+            <span>${esc(item.taskText)}${partialCatBadge}</span>
+            <span class="partial-log-note">${esc(item.note)}</span>
+          </div>
+          <div class="completed-meta" style="margin-left:auto">${time}</div>
+        </div>`;
+        return;
+      }
+      const t = item;
       const catName = t.categoryId && catMap[t.categoryId] ? esc(catMap[t.categoryId]) : '';
       const catBadge = catName ? `<span class="cat-label-badge" style="margin-top:0;margin-left:6px">${catName}</span>` : '';
+      const lastNote = t._lastNote ? `<span class="partial-log-note">${esc(t._lastNote)}</span>` : '';
       html += `<div class="completed-item" data-id="${t.id}">
         <div class="completed-check"></div>
-        <div class="completed-title">${esc(t.text)}${catBadge}</div>
-        <div class="completed-meta">${time}</div>
+        <div class="completed-title" style="display:flex;flex-direction:column;gap:2px">
+          <span>${esc(t.text)}${catBadge}</span>
+          ${lastNote}
+        </div>
         <div class="completed-actions">
           <div class="outliner-action" data-action="restore" data-id="${t.id}">↩ Restore</div>
           <div class="outliner-action" data-action="archive" data-id="${t.id}">Archive</div>
         </div>
+        <div class="completed-meta">${time}</div>
       </div>`;
     });
     html += `</div></div>`;
@@ -1361,7 +1546,8 @@ function renderCompletedSection() {
 
   container.innerHTML = html;
 
-  const total = tasks.length;
+  const progressTotal = inProgress.reduce((sum, t) => sum + (t.log || []).filter(e => e.type === 'progress').length, 0);
+  const total = tasks.length + progressTotal;
   document.getElementById('completed-subtitle').textContent = `· ${total} total`;
   document.getElementById('badge-completed').textContent = total || '';
 }
@@ -1456,10 +1642,10 @@ function initTaskDelegation(containerId, listState) {
         DB.updateTask(target.dataset.id, { text: target.value });
       }, 400);
     }
-    if (target.classList.contains('task-notes') && target.dataset.id) {
+    if (target.classList.contains('task-description') && target.dataset.id) {
       clearTimeout(target._saveTimer);
       target._saveTimer = setTimeout(() => {
-        DB.updateTask(target.dataset.id, { notes: target.value });
+        DB.updateTask(target.dataset.id, { description: target.value });
       }, 400);
     }
     if (target.classList.contains('task-due-input') && target.dataset.id) {
@@ -1481,11 +1667,12 @@ function initTaskDelegation(containerId, listState) {
 
     // Cmd+Enter inside detail panel closes it and refocuses the task input
     if (e.key === 'Enter' && e.metaKey &&
-        (target.classList.contains('task-notes') || target.classList.contains('task-due-input'))) {
+        (target.classList.contains('task-description') || target.classList.contains('task-due-input'))) {
       e.preventDefault();
       const id = target.dataset.id;
       if (id) {
-        DB.updateTask(id, target.classList.contains('task-notes') ? { notes: target.value } : { dueDate: target.value });
+        if (target.classList.contains('task-description')) DB.updateTask(id, { description: target.value });
+        else DB.updateTask(id, { dueDate: target.value });
         state.expandedTasks.delete(id);
         renderSection(listState);
         setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0);
@@ -1625,9 +1812,16 @@ function initTaskDelegation(containerId, listState) {
     const toggleCat = e.target.closest('[data-toggle-cat]');
     if (toggleCat) {
       const catId = toggleCat.dataset.toggleCat;
-      if (state.collapsedCats.has(catId)) state.collapsedCats.delete(catId);
-      else state.collapsedCats.add(catId);
+      const wasCollapsed = state.collapsedCats.has(catId) || !state.manuallyExpandedCats.has(catId) && DB.getTasks().filter(t => !t.archived && t.categoryId === catId && (t.state === listState)).length === 0;
+      if (wasCollapsed) { state.collapsedCats.delete(catId); state.manuallyExpandedCats.add(catId); }
+      else { state.collapsedCats.add(catId); state.manuallyExpandedCats.delete(catId); }
       renderSection(listState);
+      if (wasCollapsed) {
+        setTimeout(() => {
+          const catRow = container.querySelector(`[data-toggle-cat="${catId}"]`)?.closest('.outliner-row');
+          if (catRow) catRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
       return;
     }
 
@@ -1635,12 +1829,19 @@ function initTaskDelegation(containerId, listState) {
     const id = e.target.dataset.id;
     const catId = e.target.dataset.catId;
 
-    // Toggle detail panel
-    if (action === 'toggle-detail' && id) {
-      if (state.expandedTasks.has(id)) state.expandedTasks.delete(id);
-      else state.expandedTasks.add(id);
-      renderSection(listState);
-      return;
+    // Toggle detail panel via bullet or ··· button
+    const checkEl = e.target.closest('.outliner-check');
+    if ((checkEl || action === 'toggle-detail') && !e.target.closest('.is-category-row')) {
+      const row = checkEl
+        ? checkEl.closest('.outliner-row[data-id]')
+        : null;
+      const rowId = row?.dataset.id || id;
+      if (rowId) {
+        if (state.expandedTasks.has(rowId)) state.expandedTasks.delete(rowId);
+        else state.expandedTasks.add(rowId);
+        renderSection(listState);
+        return;
+      }
     }
 
     // Clear due date
@@ -1664,10 +1865,11 @@ function initTaskDelegation(containerId, listState) {
     if (action === 'toggle-urgent') { const t = DB.getTasks().find(t => t.id === id); const nowUrgent = !t?.urgent; DB.updateTask(id, { urgent: nowUrgent }); if (nowUrgent) DB.reorderTaskToTop(id); renderSection(listState); renderBriefingTasks(); }
     else if (action === 'move-up') { DB.reorderTask(id, -1); renderSection(listState); setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0); }
     else if (action === 'move-down') { DB.reorderTask(id, 1); renderSection(listState); setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0); }
-    else if (action === 'start') { DB.moveTask(id, 'inprogress'); renderSection(listState); renderInProgressSection(); }
+    else if (action === 'start') { DB.addLogEntry(id, { type: 'started' }); DB.moveTask(id, 'inprogress'); renderSection(listState); renderInProgressSection(); }
     else if (action === 'nextup') { DB.updateTask(id, { state: 'nextup', dayKey: undefined }); renderNextUpSection(); renderTodoSection(); }
     else if (action === 'todo') { DB.updateTask(id, { state: 'todo', dayKey: state.viewDay }); renderNextUpSection(); renderTodoSection(); }
-    else if (action === 'done') { DB.moveTask(id, 'completed'); renderInProgressSection(); renderCompletedSection(); }
+    else if (action === 'log-progress') { openLogPopup(id, 'progress', listState); return; }
+    else if (action === 'done') { openLogPopup(id, 'done', listState); return; }
     else if (action === 'back') { DB.updateTask(id, { state: 'todo', dayKey: state.viewDay }); renderInProgressSection(); renderTodoSection(); }
     else if (action === 'archive') { DB.archiveTask(id); renderSection(listState); }
   });
@@ -1690,6 +1892,58 @@ function initCompletedDelegation() {
     if (action === 'restore') { DB.restoreTask(id, state.viewDay); renderCompletedSection(); renderTodoSection(); }
     else if (action === 'archive') { DB.archiveTask(id); renderCompletedSection(); }
   });
+}
+
+// ─── TASK LOG POPUP ───────────────────────────────────────────────────────────
+function openLogPopup(taskId, type, listState) {
+  const task = DB.getTasks().find(t => t.id === taskId);
+  if (!task) return;
+
+  const isDone = type === 'done';
+  const eyebrow = isDone ? '✓ Complete task' : '◐ Log progress';
+  const placeholder = isDone ? 'What got done? (optional)' : 'What did you get done?';
+  const submitLabel = isDone ? 'Mark complete' : 'Log it';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'partial-popup-overlay';
+  overlay.innerHTML = `
+    <div class="partial-popup">
+      <div class="partial-popup-eyebrow">${eyebrow}</div>
+      <div class="partial-popup-task">${esc(task.text)}</div>
+      <textarea class="partial-popup-ta" id="log-popup-ta" placeholder="${placeholder}" rows="3"></textarea>
+      <div class="partial-popup-hint">⌘↩ to submit</div>
+      <div class="partial-popup-btns">
+        <button class="wf-btn ghost" id="log-popup-cancel">Cancel</button>
+        <button class="wf-btn primary" id="log-popup-submit">${submitLabel}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const ta = overlay.querySelector('#log-popup-ta');
+  ta.focus();
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#log-popup-cancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  ta.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  const submit = () => {
+    const note = ta.value.trim() || null;
+    if (!isDone && !note) { ta.focus(); return; }
+    DB.addLogEntry(taskId, { type, note });
+    if (isDone) {
+      DB.moveTask(taskId, 'completed');
+      renderSection(listState);
+      renderInProgressSection();
+    } else {
+      renderInProgressSection();
+    }
+    renderCompletedSection();
+    close();
+  };
+
+  overlay.querySelector('#log-popup-submit').addEventListener('click', submit);
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && e.metaKey) { e.preventDefault(); submit(); } });
 }
 
 // ─── EVENTS ACTIONS ───────────────────────────────────────────────────────────
@@ -1947,11 +2201,12 @@ function initSectionCollapse() {
       section.classList.contains('collapsed') ? set.add(section.id) : set.delete(section.id);
       saveCollapsedSections(set);
 
-      // Stagger animation on expand for task sections
+      // Stagger animation + scroll to top on expand for task sections
       if (isTaskSection && wasCollapsed) {
         section.classList.add('section-expanding');
         section.querySelectorAll('.outliner-row').forEach((row, i) => row.style.setProperty('--row-i', i));
         setTimeout(() => section.classList.remove('section-expanding'), 800);
+        setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
       }
     });
   });
@@ -1967,10 +2222,16 @@ function renderAll() {
   renderInProgressSection();
   renderCompletedSection();
   renderEventsSection();
+  renderBriefingDateline();
+  renderBriefingQuote();
+  renderOnThisDay();
+  renderBriefingGig();
+  renderBriefingTasks();
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function init() {
+  DB.migrateToV2();
   checkNewDay();
   initSectionCollapse();
   initGrateful();
