@@ -1045,8 +1045,9 @@ function renderBriefingTasks() {
 
   // Next urgent task (nextup first, then todo, then inprogress)
   const stateOrder = { nextup: 0, todo: 1, inprogress: 2 };
+  const today = DB.todayKey();
   const urgent = tasks
-    .filter(t => t.urgent)
+    .filter(t => t.urgent && (t.state !== 'todo' || t.dayKey === today))
     .sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9))[0];
   const urgentEl = document.getElementById('briefing-urgent');
   if (urgent) {
@@ -2134,6 +2135,20 @@ function initCalendar() {
 }
 
 // ─── NEW DAY CHECK ────────────────────────────────────────────────────────────
+// Roll any incomplete todo tasks from past days forward to today
+function rolloverTodos() {
+  const today = DB.todayKey();
+  const tasks = DB.getTasks();
+  let changed = false;
+  tasks.forEach(t => {
+    if (!t.archived && t.state === 'todo' && t.dayKey && t.dayKey < today) {
+      t.dayKey = today;
+      changed = true;
+    }
+  });
+  if (changed) DB.saveTasks(tasks);
+}
+
 function checkNewDay() {
   const data = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } })();
   const today = DB.todayKey();
@@ -2240,6 +2255,7 @@ function renderAll() {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function init() {
   DB.migrateToV2();
+  rolloverTodos();
   checkNewDay();
   initSectionCollapse();
   initGrateful();
