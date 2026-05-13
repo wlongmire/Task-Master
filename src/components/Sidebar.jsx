@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import MiniCalendar from './shared/MiniCalendar';
 import { getTasks, getEvents, todayKey, offsetDate, exportData } from '../db';
 
@@ -87,7 +87,7 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick }) {
 }
 
 function FooterBtn({ onClick, children }) {
-  const [hovered, setHovered] = React.useState(false);
+  const [hovered, setHovered] = useState(false);
   return (
     <button onClick={onClick}
       onMouseEnter={() => setHovered(true)}
