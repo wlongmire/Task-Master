@@ -14,6 +14,23 @@ export default function TodoPage({ viewDay, refresh, tick, openArchive, openLogP
       <div className="page-grid">
         <section className="section">
           <div className="section-hd">
+            <span className="section-title backlog">Backlog</span>
+            <span className="section-sub">· up next</span>
+          </div>
+          <Outliner
+            key={`backlog-${tick}`}
+            listState="backlog"
+            viewDay={viewDay}
+            refresh={refresh}
+            openLogPopup={openLogPopup}
+          />
+          <div className="o-hint">
+            <span className="hint-k"><span className="hint-kbd">↑ To Do</span> promotes to today</span>
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="section-hd">
             <span className="section-title todo">To Do</span>
             <span className="section-sub">· today</span>
           </div>
@@ -27,23 +44,6 @@ export default function TodoPage({ viewDay, refresh, tick, openArchive, openLogP
           <div className="o-hint">
             <span className="hint-k"><span className="hint-kbd">▶ Start</span> moves to In Progress</span>
             <span className="hint-k"><span className="hint-kbd">↓ Defer</span> sends to Backlog</span>
-          </div>
-        </section>
-
-        <section className="section">
-          <div className="section-hd">
-            <span className="section-title backlog">Backlog</span>
-            <span className="section-sub">· up next</span>
-          </div>
-          <Outliner
-            key={`backlog-${tick}`}
-            listState="backlog"
-            viewDay={viewDay}
-            refresh={refresh}
-            openLogPopup={openLogPopup}
-          />
-          <div className="o-hint">
-            <span className="hint-k"><span className="hint-kbd">↑ To Do</span> promotes to today</span>
           </div>
         </section>
       </div>
