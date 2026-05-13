@@ -1060,7 +1060,6 @@ function renderBriefingTasks() {
   }
 
   // Next task with a due date — today only
-  const today = DB.todayKey();
   const withDue = state.viewDay === today
     ? tasks.filter(t => t.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]
     : null;
