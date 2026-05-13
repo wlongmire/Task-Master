@@ -1041,7 +1041,7 @@ function renderBriefingGig() {
 }
 
 function renderBriefingTasks() {
-  const tasks = DB.getTasks().filter(t => !t.archived && !t.done);
+  const tasks = DB.getTasks().filter(t => !t.archived && !t.done && t.state !== 'completed');
 
   // Next urgent task (nextup first, then todo, then inprogress)
   const stateOrder = { nextup: 0, todo: 1, inprogress: 2 };
