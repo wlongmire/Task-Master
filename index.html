@@ -415,6 +415,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 
     <div class="sidebar-footer">
       <div class="sidebar-footer-btn" id="btn-archive">⊡ Archive</div>
+      <div class="sidebar-footer-btn" id="btn-export-data">⬇ Export Data</div>
     </div>
   </aside>
 
@@ -2008,8 +2009,21 @@ function renderArchive() {
   body.innerHTML = html || '<div class="archive-empty">Nothing here yet.</div>';
 }
 
+function exportData() {
+  const raw = localStorage.getItem('taskmaster_data') || '{}';
+  const blob = new Blob([raw], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `taskmaster-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function initArchive() {
   document.getElementById('btn-archive').addEventListener('click', openArchiveOverlay);
+  document.getElementById('btn-export-data').addEventListener('click', exportData);
   document.getElementById('btn-archive-close').addEventListener('click', closeArchiveOverlay);
   document.getElementById('btn-nextup-archive')?.addEventListener('click', () => { state.archiveTab = 'tasks'; openArchiveOverlay(); });
   document.getElementById('btn-todo-archive')?.addEventListener('click', () => { state.archiveTab = 'tasks'; openArchiveOverlay(); });
