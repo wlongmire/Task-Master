@@ -1,0 +1,100 @@
+import React, { useRef, useEffect, useState } from 'react';
+import { getGrateful, setGrateful, getIntentions, setIntentions, todayKey } from '../../db';
+
+function NotebookSection({ title, colorVar, label, placeholder, hint, value, onChange, readOnly, onArchive }) {
+  const taRef = useRef();
+  useEffect(() => {
+    if (taRef.current) {
+      taRef.current.style.height = 'auto';
+      taRef.current.style.height = taRef.current.scrollHeight + 'px';
+    }
+  }, [value]);
+
+  return (
+    <section className="section">
+      <div className="section-hd">
+        <span className="section-title" style={{ color: `var(${colorVar})` }}>{title}</span>
+        <span className="section-sub">{readOnly ? '· read-only' : '· today'}</span>
+      </div>
+      <div className="notebook">
+        <div className="nb-label">{label}</div>
+        <textarea
+          ref={taRef}
+          className="nb-area"
+          placeholder={placeholder}
+          value={value}
+          onChange={e => !readOnly && onChange(e.target.value)}
+          readOnly={readOnly}
+        />
+        <div className="nb-footer">
+          <span className="nb-hint">{hint}</span>
+          <button className="nb-link" onClick={onArchive}>History →</button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
+  const today = todayKey();
+  const isToday = viewDay === today;
+
+  const [grateful, setGratefulState] = useState(() => getGrateful(viewDay).text || '');
+  const [intentions, setIntentionsState] = useState(() => getIntentions(viewDay).text || '');
+
+  // Re-read when viewDay or tick changes
+  useEffect(() => {
+    setGratefulState(getGrateful(viewDay).text || '');
+    setIntentionsState(getIntentions(viewDay).text || '');
+  }, [viewDay, tick]);
+
+  const gratefulTimer = useRef(null);
+  const intentionsTimer = useRef(null);
+
+  const handleGrateful = (val) => {
+    setGratefulState(val);
+    clearTimeout(gratefulTimer.current);
+    gratefulTimer.current = setTimeout(() => { setGrateful(viewDay, val); refresh(); }, 400);
+  };
+  const handleIntentions = (val) => {
+    setIntentionsState(val);
+    clearTimeout(intentionsTimer.current);
+    intentionsTimer.current = setTimeout(() => { setIntentions(viewDay, val); refresh(); }, 400);
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">Daily</div>
+        <div className="page-subtitle">· journal · {isToday ? 'resets at midnight' : 'viewing past day'}</div>
+        <div className="page-actions">
+          <button className="btn ghost" onClick={() => openArchive('grateful')}>Past entries</button>
+        </div>
+      </div>
+      <div className="page-grid single">
+        <NotebookSection
+          title="Gratitudes"
+          colorVar="--c-grateful"
+          label="What I'm thankful for today"
+          placeholder="Write freely — one thing, or many..."
+          hint={isToday ? 'Resets at midnight · saved to archive' : 'Read-only — past day'}
+          value={grateful}
+          onChange={handleGrateful}
+          readOnly={!isToday}
+          onArchive={() => openArchive('grateful')}
+        />
+        <NotebookSection
+          title="Intentions"
+          colorVar="--c-intentions"
+          label="Things I want — in any sense of the word"
+          placeholder="Material things, experiences, feelings..."
+          hint={isToday ? 'Saved as you type · versions in archive' : 'Read-only — past day'}
+          value={intentions}
+          onChange={handleIntentions}
+          readOnly={!isToday}
+          onArchive={() => openArchive('intentions')}
+        />
+      </div>
+    </div>
+  );
+}
