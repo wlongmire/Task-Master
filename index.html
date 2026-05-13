@@ -451,20 +451,6 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
             <div class="briefing-otd-text" id="briefing-gig-name"></div>
           </div>
         </div>
-        <div class="briefing-otd" id="briefing-urgent" style="display:none">
-          <div class="briefing-otd-label">Next Urgent</div>
-          <div class="briefing-otd-body">
-            <div class="briefing-otd-year" id="briefing-urgent-state"></div>
-            <div class="briefing-otd-text" id="briefing-urgent-name"></div>
-          </div>
-        </div>
-        <div class="briefing-otd" id="briefing-deadline" style="display:none">
-          <div class="briefing-otd-label">Next Deadline</div>
-          <div class="briefing-otd-body">
-            <div class="briefing-otd-year" id="briefing-deadline-due"></div>
-            <div class="briefing-otd-text" id="briefing-deadline-name"></div>
-          </div>
-        </div>
       </div>
 
       <div class="sections-scroll" id="sections-scroll">
@@ -1040,40 +1026,6 @@ function renderBriefingGig() {
   el.style.display = 'flex';
 }
 
-function renderBriefingTasks() {
-  const tasks = DB.getTasks().filter(t => !t.archived && !t.done && t.state !== 'completed');
-
-  // Next urgent task (nextup first, then todo, then inprogress)
-  const stateOrder = { nextup: 0, todo: 1, inprogress: 2 };
-  const today = DB.todayKey();
-  const urgent = tasks
-    .filter(t => t.urgent && (t.state !== 'todo' || t.dayKey === today))
-    .sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9))[0];
-  const urgentEl = document.getElementById('briefing-urgent');
-  if (urgent) {
-    const label = urgent.state === 'nextup' ? 'Next Up' : urgent.state === 'todo' ? 'To Do' : 'In Progress';
-    document.getElementById('briefing-urgent-state').textContent = label;
-    document.getElementById('briefing-urgent-name').textContent = urgent.text;
-    urgentEl.style.display = 'flex';
-  } else {
-    urgentEl.style.display = 'none';
-  }
-
-  // Next task with a due date — today only
-  const withDue = state.viewDay === today
-    ? tasks.filter(t => t.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]
-    : null;
-  const deadlineEl = document.getElementById('briefing-deadline');
-  if (withDue) {
-    const diff = Math.round((new Date(withDue.dueDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
-    const dueLabel = diff < 0 ? `${Math.abs(diff)}d overdue` : diff === 0 ? 'due today' : diff === 1 ? 'due tomorrow' : `due in ${diff}d`;
-    document.getElementById('briefing-deadline-due').textContent = dueLabel;
-    document.getElementById('briefing-deadline-name').textContent = withDue.text;
-    deadlineEl.style.display = 'flex';
-  } else {
-    deadlineEl.style.display = 'none';
-  }
-}
 
 function renderBriefingGreeting() {
   const h = new Date().getHours();
@@ -1597,7 +1549,7 @@ function renderEventsSection() {
 
   container.innerHTML = html;
   renderBriefingGig();
-  renderBriefingTasks();
+  
 
   const nextGig = sorted.find(e => !e.done && daysUntil(e.date) >= 0);
   if (nextGig) {
@@ -1658,7 +1610,7 @@ function initTaskDelegation(containerId, listState) {
       DB.updateTask(target.dataset.id, { dueDate: target.value });
       state.expandedTasks.delete(target.dataset.id);
       renderSection(listState);
-      renderBriefingTasks();
+      
     }
     if (target.dataset.catId) {
       clearTimeout(target._saveTimer);
@@ -1746,7 +1698,7 @@ function initTaskDelegation(containerId, listState) {
         DB.updateTask(id, { urgent: nowUrgent });
         if (nowUrgent) DB.reorderTaskToTop(id);
         renderSection(listState);
-        renderBriefingTasks();
+        
         setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0);
         return;
       }
@@ -1854,7 +1806,7 @@ function initTaskDelegation(containerId, listState) {
     if (action === 'clear-due' && id) {
       DB.updateTask(id, { dueDate: '' });
       renderSection(listState);
-      renderBriefingTasks();
+      
       return;
     }
 
@@ -1868,7 +1820,7 @@ function initTaskDelegation(containerId, listState) {
 
     if (!action || !id) return;
 
-    if (action === 'toggle-urgent') { const t = DB.getTasks().find(t => t.id === id); const nowUrgent = !t?.urgent; DB.updateTask(id, { urgent: nowUrgent }); if (nowUrgent) DB.reorderTaskToTop(id); renderSection(listState); renderBriefingTasks(); }
+    if (action === 'toggle-urgent') { const t = DB.getTasks().find(t => t.id === id); const nowUrgent = !t?.urgent; DB.updateTask(id, { urgent: nowUrgent }); if (nowUrgent) DB.reorderTaskToTop(id); renderSection(listState);  }
     else if (action === 'move-up') { DB.reorderTask(id, -1); renderSection(listState); setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0); }
     else if (action === 'move-down') { DB.reorderTask(id, 1); renderSection(listState); setTimeout(() => document.querySelector(`.outliner-input[data-id="${id}"]`)?.focus(), 0); }
     else if (action === 'start') { DB.addLogEntry(id, { type: 'started' }); DB.moveTask(id, 'inprogress'); renderSection(listState); renderInProgressSection(); }
@@ -2248,7 +2200,7 @@ function renderAll() {
   renderBriefingQuote();
   renderOnThisDay();
   renderBriefingGig();
-  renderBriefingTasks();
+  
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -2275,7 +2227,7 @@ function init() {
   renderBriefingQuote();
   renderOnThisDay();
   renderBriefingGig();
-  renderBriefingTasks();
+  
   renderAll();
 
   // Set first nav item active
