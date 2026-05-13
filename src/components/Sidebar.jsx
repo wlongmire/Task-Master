@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import MiniCalendar from './shared/MiniCalendar';
-import { getTasks, getEvents, todayKey, offsetDate } from '../db';
+import { getTasks, getEvents, todayKey, offsetDate, exportData } from '../db';
 
 const PAGES = [
   { id: 'daily',  label: 'Daily',      color: 'var(--c-grateful)' },
@@ -79,13 +79,22 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick }) {
       ))}
 
       <div style={{ marginTop: 'auto', padding: '10px 16px 12px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <button style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: '#8a8680', cursor: 'pointer', padding: '4px 0', background: 'none', border: 'none', textAlign: 'left' }}
-          onMouseEnter={e => e.target.style.color = 'var(--text)'}
-          onMouseLeave={e => e.target.style.color = '#8a8680'}>
-          ⊡ Archive
-        </button>
+        <FooterBtn onClick={() => {}}>⊡ Archive</FooterBtn>
+        <FooterBtn onClick={exportData}>⬇ Export Data</FooterBtn>
       </div>
     </aside>
+  );
+}
+
+function FooterBtn({ onClick, children }) {
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <button onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: hovered ? 'var(--text)' : '#8a8680', cursor: 'pointer', padding: '4px 0', background: 'none', border: 'none', textAlign: 'left', transition: 'color 0.1s' }}>
+      {children}
+    </button>
   );
 }
 
