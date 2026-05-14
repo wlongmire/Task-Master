@@ -15,7 +15,7 @@ const TOPIC_COLORS = [
   'var(--c-completed)', 'var(--c-grateful)', 'var(--c-intentions)',
 ];
 
-export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onClearData, openArchive, archiveOpen, onCloseArchive, onTopicChange }) {
+export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onClearData, openArchive, archiveOpen, onCloseArchive, onTopicChange, onSignOut }) {
   const today = todayKey();
   const [confirmClear, setConfirmClear] = useState(false);
   const [importError, setImportError] = useState(null);
@@ -170,6 +170,7 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
         <div style={{ padding: '4px 16px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           <FooterBtn onClick={() => archiveOpen ? onCloseArchive() : openArchive('activity')}>⊡ Activity</FooterBtn>
           <FooterBtn onClick={exportData}>⬇ Export Data</FooterBtn>
+          <FooterBtn onClick={onSignOut}>→ Sign Out</FooterBtn>
           <FooterBtn onClick={() => fileInputRef.current?.click()}>⬆ Import Data</FooterBtn>
           <input
             ref={fileInputRef}

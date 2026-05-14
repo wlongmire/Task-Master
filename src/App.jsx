@@ -1,4 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
+import { initDB, rolloverTodos, todayKey, getTasks } from './db';
+import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import DailyPage from './components/pages/DailyPage';
@@ -8,7 +12,6 @@ import GigsPage from './components/pages/GigsPage';
 import ArchiveOverlay from './components/shared/ArchiveOverlay';
 import LogPopup from './components/shared/LogPopup';
 import { scheduleOutlinerFocus } from './components/shared/Outliner';
-import { todayKey, getTasks } from './db';
 
 const PAGE_META = {
   daily:  { title: 'Daily',           archiveTab: 'grateful' },
@@ -18,26 +21,35 @@ const PAGE_META = {
 };
 
 export default function App() {
-  const [page, setPage] = useState('daily');
-  const [viewDay, setViewDay] = useState(todayKey());
+  const [user,    setUser]    = useState(undefined); // undefined = checking auth
+  const [dbReady, setDbReady] = useState(false);
+
+  const [page,       setPage]       = useState('daily');
+  const [viewDay,    setViewDay]    = useState(todayKey());
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [archiveTab, setArchiveTab] = useState('activity');
-  const [logPopup, setLogPopup] = useState(null); // { taskId, type, onDone }
-  // tick is bumped whenever DB changes so all components re-read
-  const [tick, setTick] = useState(0);
+  const [archiveTab,  setArchiveTab]  = useState('activity');
+  const [logPopup,    setLogPopup]    = useState(null);
+  const [tick,        setTick]        = useState(0);
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
-  const openArchive = useCallback((tab = 'grateful') => {
-    setArchiveTab(tab);
-    setArchiveOpen(true);
+  // ── Auth listener ────────────────────────────────────────────────────────
+  useEffect(() => {
+    let cleanupDB = null;
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setDbReady(false);
+      if (cleanupDB) { cleanupDB(); cleanupDB = null; }
+      if (u) {
+        cleanupDB = initDB(u.uid, refresh, () => {
+          rolloverTodos();
+          setDbReady(true);
+        });
+      }
+    });
+    return () => { unsubAuth(); if (cleanupDB) cleanupDB(); };
   }, []);
 
-  const openLogPopup = useCallback((taskId, type, onDone) => {
-    setLogPopup({ taskId, type, onDone });
-  }, []);
-
-  const closeLogPopup = useCallback(() => setLogPopup(null), []);
-
+  // ── Keyboard page navigation ─────────────────────────────────────────────
   const PAGES = ['daily', 'todo', 'active', 'gigs'];
   useEffect(() => {
     const handler = (e) => {
@@ -58,22 +70,37 @@ export default function App() {
     const task = getTasks().filter(t => !t.archived && t.state === listState)[0];
     if (task) scheduleOutlinerFocus(task.id);
   }, []);
-
   const focusLastTask = useCallback((listState) => {
     const tasks = getTasks().filter(t => !t.archived && t.state === listState);
-    const task = tasks[tasks.length - 1];
-    if (task) scheduleOutlinerFocus(task.id);
+    if (tasks.length) scheduleOutlinerFocus(tasks[tasks.length - 1].id);
   }, []);
 
-  const pageProps = { viewDay, setViewDay, refresh, tick, openArchive, openLogPopup };
+  const openArchive   = useCallback((tab = 'grateful') => { setArchiveTab(tab); setArchiveOpen(true); }, []);
+  const openLogPopup  = useCallback((taskId, type, onDone) => setLogPopup({ taskId, type, onDone }), []);
+  const closeLogPopup = useCallback(() => setLogPopup(null), []);
 
-  const meta = PAGE_META[page];
-  const dailySubtitle = `· journal · ${viewDay === todayKey() ? 'resets at midnight' : 'viewing past day'}`;
-  const subtitle = page === 'daily' ? dailySubtitle : meta.subtitle;
+  // ── Auth loading ─────────────────────────────────────────────────────────
+  if (user === undefined) return <Splash label="Checking auth…" />;
+  if (!user)              return <Login />;
+  if (!dbReady)           return <Splash label="Loading your data…" />;
+
+  const pageProps = { viewDay, setViewDay, refresh, tick, openArchive, openLogPopup };
+  const meta      = PAGE_META[page];
+  const subtitle  = page === 'daily'
+    ? `· journal · ${viewDay === todayKey() ? 'resets at midnight' : 'viewing past day'}`
+    : meta.subtitle;
 
   return (
     <div className="app">
-      <Sidebar page={page} setPage={setPage} viewDay={viewDay} setViewDay={setViewDay} tick={tick} onClearData={refresh} openArchive={openArchive} archiveOpen={archiveOpen} onCloseArchive={() => setArchiveOpen(false)} onTopicChange={refresh} />
+      <Sidebar
+        page={page} setPage={setPage}
+        viewDay={viewDay} setViewDay={setViewDay}
+        tick={tick} onClearData={refresh}
+        openArchive={openArchive}
+        archiveOpen={archiveOpen} onCloseArchive={() => setArchiveOpen(false)}
+        onTopicChange={refresh}
+        onSignOut={() => signOut(auth)}
+      />
       <main className="main">
         <Topbar viewDay={viewDay} tick={tick} />
         <div className="page-header">
@@ -90,21 +117,31 @@ export default function App() {
           {page === 'gigs'   && <GigsPage   {...pageProps} />}
         </div>
       </main>
-      <ArchiveOverlay
-        open={archiveOpen}
-        tab={archiveTab}
-        setTab={setArchiveTab}
-        onClose={() => setArchiveOpen(false)}
-        tick={tick}
-      />
+      <ArchiveOverlay open={archiveOpen} tab={archiveTab} setTab={setArchiveTab} onClose={() => setArchiveOpen(false)} tick={tick} />
       {logPopup && (
         <LogPopup
-          taskId={logPopup.taskId}
-          type={logPopup.type}
+          taskId={logPopup.taskId} type={logPopup.type}
           onDone={(note) => { logPopup.onDone(note); closeLogPopup(); }}
           onCancel={closeLogPopup}
         />
       )}
+    </div>
+  );
+}
+
+function Splash({ label }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'var(--bg)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'column', gap: 16,
+    }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text-dimmer)' }}>
+        Task Master
+      </div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dimmer)', letterSpacing: '0.08em' }}>
+        {label}
+      </div>
     </div>
   );
 }
