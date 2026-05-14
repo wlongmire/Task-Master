@@ -94,6 +94,22 @@ export function addTask(task) {
   saveTasks(tasks);
   return newTask;
 }
+export function insertTaskAfter(afterId, task) {
+  const tasks = getTasks();
+  const now = Date.now();
+  const newTask = {
+    id: genId(),
+    dateCreated: now,
+    archived: false,
+    log: [{ id: now + '-c', type: 'created', note: null, loggedAt: now }],
+    ...task,
+  };
+  const idx = tasks.findIndex(t => t.id === afterId);
+  if (idx === -1) tasks.push(newTask);
+  else tasks.splice(idx + 1, 0, newTask);
+  saveTasks(tasks);
+  return newTask;
+}
 export function updateTask(id, updates) {
   const tasks = getTasks();
   const idx = tasks.findIndex(t => t.id === id);
@@ -113,6 +129,9 @@ export function moveTask(id, newState) {
 }
 export function archiveTask(id) {
   updateTask(id, { archived: true, archivedAt: Date.now() });
+}
+export function deleteTask(id) {
+  saveTasks(getTasks().filter(t => t.id !== id));
 }
 export function restoreTask(id, dayKey) {
   updateTask(id, { state: 'todo', dayKey, dateCompleted: null, archived: false });
@@ -179,6 +198,12 @@ export function updateEvent(id, updates) {
 export function archiveEvent(id) {
   updateEvent(id, { archived: true });
 }
+export function deleteEvent(id) {
+  const data = load();
+  if (!data.events) return;
+  data.events = data.events.filter(e => e.id !== id);
+  save(data);
+}
 
 // ── Daily Briefing ──
 export function getDailyBriefing(dk) {
@@ -229,6 +254,11 @@ export function migrate() {
   save(data);
 }
 
+// ── Clear ──
+export function clearAllData() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 // ── Export ──
 export function exportData() {
   const raw = localStorage.getItem(STORAGE_KEY) || '{}';
@@ -239,4 +269,56 @@ export function exportData() {
   a.download = `taskmaster-${dateKey(new Date())}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Meetings ──
+export function getMeetings() {
+  return load().meetings || [];
+}
+export function addMeeting(mtg) {
+  const data = load();
+  if (!data.meetings) data.meetings = [];
+  const newMtg = { id: genId(), archived: false, done: false, ...mtg };
+  data.meetings.push(newMtg);
+  save(data);
+  return newMtg;
+}
+export function updateMeeting(id, updates) {
+  const data = load();
+  if (!data.meetings) return;
+  const idx = data.meetings.findIndex(m => m.id === id);
+  if (idx !== -1) data.meetings[idx] = { ...data.meetings[idx], ...updates };
+  save(data);
+}
+export function archiveMeeting(id) {
+  updateMeeting(id, { archived: true });
+}
+export function deleteMeeting(id) {
+  const data = load();
+  if (!data.meetings) return;
+  data.meetings = data.meetings.filter(m => m.id !== id);
+  save(data);
+}
+
+// ── Import ──
+export function importData(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        // Basic sanity check — must be an object
+        if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+          reject(new Error('Invalid file format.'));
+          return;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        resolve();
+      } catch {
+        reject(new Error('Could not parse file. Make sure it is a valid Task Master export.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.readAsText(file);
+  });
 }

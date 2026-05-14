@@ -1,15 +1,107 @@
-import React from 'react';
-import { getGratefulDays, getGrateful, getIntentionsDays, getIntentions, getArchivedTasks, formatDateShort } from '../../db';
+import React, { useMemo, useEffect } from 'react';
+import { getGratefulDays, getGrateful, getIntentionsDays, getIntentions, getTasks, getEvents, getMeetings, formatDateShort, todayKey } from '../../db';
 
-const TABS = ['grateful', 'intentions', 'tasks'];
+const TABS = ['activity', 'grateful', 'intentions', 'events'];
 
-function esc(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+const TAB_LABELS = { activity: 'Activity', grateful: 'Grateful', intentions: 'Intentions', events: 'Events' };
+
+const EVENT_META = {
+  created:  { label: 'Created',   color: 'var(--text-dimmer)' },
+  started:  { label: 'Started',   color: 'var(--c-inprogress)' },
+  progress: { label: 'Progress',  color: 'var(--c-inprogress)' },
+  done:     { label: 'Completed', color: 'var(--c-completed)' },
+  archived: { label: 'Archived',  color: 'var(--text-dimmer)' },
+};
+
+function buildActivityFeed(tasks) {
+  const events = [];
+  tasks.forEach(task => {
+    (task.log || []).forEach(entry => {
+      events.push({ id: entry.id, type: entry.type, taskText: task.text, note: entry.note, ts: entry.loggedAt });
+    });
+    if (task.archived && task.archivedAt) {
+      events.push({ id: task.id + '-arc', type: 'archived', taskText: task.text, note: null, ts: task.archivedAt });
+    }
+  });
+  const byDay = {};
+  events.forEach(e => {
+    const d = new Date(e.ts);
+    const dk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!byDay[dk]) byDay[dk] = [];
+    byDay[dk].push(e);
+  });
+  return Object.entries(byDay)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([dk, evts]) => [dk, [...evts].sort((a, b) => b.ts - a.ts)]);
+}
+
+function dayHeader(dk) {
+  const today = todayKey();
+  const yesterday = new Date(today + 'T00:00:00');
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yk = yesterday.toISOString().slice(0, 10);
+  const d = new Date(dk + 'T00:00:00');
+  const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  if (dk === today) return `Today — ${label}`;
+  if (dk === yk)    return `Yesterday — ${label}`;
+  return label;
+}
 
 export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const idx = TABS.indexOf(tab);
+        if (e.key === 'ArrowLeft')  setTab(TABS[Math.max(0, idx - 1)]);
+        if (e.key === 'ArrowRight') setTab(TABS[Math.min(TABS.length - 1, idx + 1)]);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, tab, setTab, onClose]);
+
+  const activityFeed = useMemo(() => buildActivityFeed(getTasks()), [tick]);
+
+  const completedEvents = useMemo(() => {
+    const gigs = getEvents()
+      .filter(e => e.done || e.archived)
+      .map(e => ({ ...e, kind: 'gig' }));
+    const meetings = getMeetings()
+      .filter(m => m.done || m.archived)
+      .map(m => ({ ...m, kind: 'meeting' }));
+    return [...gigs, ...meetings].sort((a, b) => b.date.localeCompare(a.date));
+  }, [tick]);
+
   if (!open) return null;
 
   let content;
-  if (tab === 'grateful') {
+
+  if (tab === 'activity') {
+    content = activityFeed.length === 0
+      ? <div className="archive-empty">No activity yet.</div>
+      : activityFeed.map(([dk, events]) => (
+          <div key={dk} style={{ marginBottom: 24 }}>
+            <div className="archive-group-label">{dayHeader(dk)}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {events.map(e => {
+                const meta = EVENT_META[e.type] || { label: e.type, color: 'var(--text-dimmer)' };
+                const timeStr = new Date(e.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                return (
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0, width: 52 }}>{timeStr}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: meta.color, flexShrink: 0, width: 62 }}>{meta.label}</span>
+                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.taskText || 'Untitled'}</span>
+                    {e.note && <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-dim)', flexShrink: 0, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {e.note}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ));
+
+  } else if (tab === 'grateful') {
     const days = getGratefulDays();
     content = days.length === 0
       ? <div className="archive-empty">No gratitude entries yet.</div>
@@ -23,6 +115,7 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
             </div>
           );
         });
+
   } else if (tab === 'intentions') {
     const days = getIntentionsDays();
     content = days.length === 0
@@ -37,37 +130,46 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
             </div>
           );
         });
-  } else {
-    const archived = getArchivedTasks();
-    content = archived.length === 0
-      ? <div className="archive-empty">No archived tasks.</div>
-      : archived.map(t => {
-          const d = t.archivedAt ? new Date(t.archivedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+  } else if (tab === 'events') {
+    content = completedEvents.length === 0
+      ? <div className="archive-empty">No completed gigs or meetings yet.</div>
+      : completedEvents.map(item => {
+          const d = new Date(item.date + 'T00:00:00');
+          const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+          const timeStr = item.time
+            ? new Date(`1970-01-01T${item.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+            : null;
           return (
-            <div key={t.id} className="archive-entry">
-              {t.text}
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', marginTop: 3 }}>
-                {d ? `Archived ${d}` : ''}{t.state ? ` · ${t.state}` : ''}
-              </div>
+            <div key={item.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: item.kind === 'gig' ? 'var(--c-gigs)' : 'var(--c-inprogress)', flexShrink: 0, width: 52 }}>{item.kind}</span>
+              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: item.archived ? 'var(--text-dim)' : 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: item.done ? 'line-through' : 'none' }}>{item.name}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', flexShrink: 0 }}>
+                {dateStr}{timeStr ? ` · ${timeStr}` : ''}
+              </span>
+              {item.archived && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0 }}>archived</span>}
             </div>
           );
         });
   }
 
   return (
-    <div className="archive-overlay open">
-      <div className="archive-hd">
-        <div className="archive-title">Archive</div>
-        <div className="archive-close" onClick={onClose}>✕ Close</div>
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={onClose} />
+      <div className="archive-overlay open">
+        <div className="archive-hd">
+          <div className="archive-title">Daily Activity</div>
+          <div className="archive-close" onClick={onClose}>✕ Close</div>
+        </div>
+        <div className="archive-tabs">
+          {TABS.map(t => (
+            <div key={t} className={`archive-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+              {TAB_LABELS[t]}
+            </div>
+          ))}
+        </div>
+        <div className="archive-body">{content}</div>
       </div>
-      <div className="archive-tabs">
-        {TABS.map(t => (
-          <div key={t} className={`archive-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </div>
-        ))}
-      </div>
-      <div className="archive-body">{content}</div>
-    </div>
+    </>
   );
 }

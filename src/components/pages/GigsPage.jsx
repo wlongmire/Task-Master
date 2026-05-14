@@ -1,115 +1,358 @@
 import React, { useState, useMemo } from 'react';
-import { getEvents, addEvent, updateEvent, archiveEvent, todayKey } from '../../db';
+import { getEvents, addEvent, updateEvent, archiveEvent, deleteEvent, getMeetings, addMeeting, updateMeeting, archiveMeeting, deleteMeeting, getCategories, todayKey } from '../../db';
 
 function daysUntil(dateStr, today) {
   return Math.round((new Date(dateStr + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
 }
 
-export default function GigsPage({ refresh, tick }) {
-  const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newDate, setNewDate] = useState('');
-  const [newNotes, setNewNotes] = useState('');
+function countdown(diff) {
+  if (diff < 0)  return `${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''} ago`;
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  return `${diff} days away`;
+}
+
+export default function GigsPage({ refresh, tick, openArchive }) {
   const today = todayKey();
+  const [addingGig, setAddingGig] = useState(false);
+  const [addingMeeting, setAddingMeeting] = useState(false);
 
-  const events = useMemo(() => {
-    return getEvents()
-      .filter(e => !e.archived)
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [tick]);
+  const gigs = useMemo(() =>
+    getEvents().filter(e => !e.archived).sort((a, b) => a.date.localeCompare(b.date)),
+  [tick]);
 
-  const handleAdd = () => {
-    if (!newName.trim() || !newDate) return;
-    addEvent({ name: newName.trim(), date: newDate, notes: newNotes.trim() || undefined });
-    setNewName(''); setNewDate(''); setNewNotes(''); setAdding(false);
-    refresh();
-  };
+  const meetings = useMemo(() =>
+    getMeetings().filter(m => !m.archived).sort((a, b) => a.date.localeCompare(b.date)),
+  [tick]);
+
+  const categories = useMemo(() => getCategories(), [tick]);
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="page-title">Gigs</div>
-        <div className="page-subtitle">· upcoming · sorted by date</div>
-        <div className="page-actions">
-          <button className="btn primary" onClick={() => setAdding(a => !a)}>+ Gig</button>
-        </div>
-      </div>
-
-      <div className="page-grid single">
-        {adding && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', padding: '16px 18px', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <input
-                autoFocus
-                placeholder="Gig name..."
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 14, padding: '6px 10px', outline: 'none' }}
-                onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
-              />
-              <input
-                type="date"
-                value={newDate}
-                onChange={e => setNewDate(e.target.value)}
-                style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 12, padding: '6px 10px', outline: 'none' }}
-              />
-            </div>
-            <input
-              placeholder="Notes (optional)..."
-              value={newNotes}
-              onChange={e => setNewNotes(e.target.value)}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '6px 10px', outline: 'none' }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn ghost" onClick={() => setAdding(false)}>Cancel</button>
-              <button className="btn primary" onClick={handleAdd}>Add Gig</button>
-            </div>
+      <div className="page-grid">
+        <section className="section">
+          <div className="section-hd">
+            <span className="section-title gigs">Gigs</span>
+            <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px' }} onClick={() => setAddingGig(a => !a)}>+ New Gig</button>
           </div>
-        )}
-
-        <div className="gig-list">
-          {events.map(evt => <GigItem key={evt.id} evt={evt} today={today} refresh={refresh} />)}
-          {events.length === 0 && !adding && (
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>
-              No gigs yet. Add one above.
-            </div>
-          )}
-        </div>
+          <GigsList gigs={gigs} today={today} refresh={refresh} adding={addingGig} setAdding={setAddingGig} categories={categories} />
+        </section>
+        <section className="section">
+          <div className="section-hd">
+            <span className="section-title inprogress">Meetings</span>
+            <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px', background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={() => setAddingMeeting(a => !a)}>+ New Meeting</button>
+          </div>
+          <MeetingsList meetings={meetings} today={today} refresh={refresh} adding={addingMeeting} setAdding={setAddingMeeting} categories={categories} />
+        </section>
       </div>
     </div>
   );
 }
 
-function GigItem({ evt, today, refresh }) {
+// ── Gigs ─────────────────────────────────────────────────────────────────────
+
+function GigsList({ gigs, today, refresh, adding, setAdding, categories }) {
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+
+  const handleAdd = () => {
+    if (!name.trim() || !date) return;
+    addEvent({ name: name.trim(), date, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
+    setName(''); setDate(''); setNotes(''); setCategoryId(''); setAdding(false);
+    refresh();
+  };
+
+  return (
+    <>
+      {adding && (
+        <AddForm
+          namePlaceholder="Gig name..."
+          date={date} setDate={setDate}
+          name={name} setName={setName}
+          notes={notes} setNotes={setNotes}
+          categoryId={categoryId} setCategoryId={setCategoryId}
+          categories={categories}
+          onAdd={handleAdd}
+          onCancel={() => setAdding(false)}
+          addLabel="Add Gig"
+        />
+      )}
+
+      <div className="gig-list">
+        {gigs.map(evt => <GigItem key={evt.id} evt={evt} today={today} refresh={refresh} categories={categories} />)}
+        {gigs.length === 0 && !adding && (
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>No gigs yet.</div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function GigItem({ evt, today, refresh, categories }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName]       = useState(evt.name);
+  const [date, setDate]       = useState(evt.date);
+  const [notes, setNotes]     = useState(evt.notes || '');
+  const [categoryId, setCategoryId] = useState(evt.categoryId || '');
+
   const diff = daysUntil(evt.date, today);
-  const isPast = diff < 0;
-  const d = new Date(evt.date + 'T00:00:00');
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const day = d.getDate();
-  const countdown = isPast
-    ? `Passed · ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''} ago`
-    : diff === 0 ? 'Today!'
-    : diff === 1 ? 'Tomorrow'
-    : `${diff} days away`;
+  const d    = new Date(evt.date + 'T00:00:00');
+  const cat  = evt.categoryId ? (categories || []).find(c => c.id === evt.categoryId) : null;
+
+  const handleSave = () => {
+    if (!name.trim() || !date) return;
+    updateEvent(evt.id, { name: name.trim(), date, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
+    setEditing(false);
+    refresh();
+  };
+
+  if (editing) {
+    return (
+      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', padding: '12px 14px', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input autoFocus value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
+            style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input placeholder="Notes (optional)..." value={notes} onChange={e => setNotes(e.target.value)}
+            style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 12, padding: '5px 9px', outline: 'none' }} />
+          {categories && categories.length > 0 && (
+            <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: categoryId ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark', cursor: 'pointer' }}>
+              <option value="">Topic...</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>
+          <button className="btn" onClick={() => { deleteEvent(evt.id); refresh(); }} style={{ background: 'transparent', borderColor: '#e05050', color: '#e05050' }}>Delete</button>
+          <button className="btn primary" onClick={handleSave}>Save</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`gig-item${evt.done ? ' done-gig' : ''}`}>
       <div className="gig-date">
-        <div className="gig-month">{month}</div>
-        <div className="gig-day">{day}</div>
+        <div className="gig-month">{d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</div>
+        <div className="gig-day">{d.getDate()}</div>
       </div>
       <div className="gig-body">
-        <div className={`gig-name${evt.done ? ' done' : ''}`}>{evt.name}</div>
-        <div className="gig-countdown">{countdown}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className={`gig-name${evt.done ? ' done' : ''}`}>{evt.name}</div>
+          {cat && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-gigs)', border: '1px solid var(--c-gigs)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
+        </div>
+        <div className="gig-countdown">{countdown(diff)}</div>
         {evt.notes && <div className="gig-notes">{evt.notes}</div>}
       </div>
       <div className="gig-actions">
+        <button className="o-act" onClick={() => { setName(evt.name); setDate(evt.date); setNotes(evt.notes || ''); setCategoryId(evt.categoryId || ''); setEditing(true); }}>Edit</button>
         <button className="o-act" onClick={() => { archiveEvent(evt.id); refresh(); }}>Archive</button>
       </div>
-      <div
-        className={`gig-check${evt.done ? ' done' : ''}`}
-        onClick={() => { updateEvent(evt.id, { done: !evt.done }); refresh(); }}
-      />
+      <div className={`gig-check${evt.done ? ' done' : ''}`} onClick={() => { updateEvent(evt.id, { done: !evt.done }); refresh(); }} />
+    </div>
+  );
+}
+
+// ── Meetings ──────────────────────────────────────────────────────────────────
+
+function MeetingsList({ meetings, today, refresh, adding, setAdding, categories }) {
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [location, setLocation] = useState('');
+  const [notes, setNotes] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+
+  const handleAdd = () => {
+    if (!name.trim() || !date) return;
+    addMeeting({ name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
+    setName(''); setDate(''); setTime(''); setLocation(''); setNotes(''); setCategoryId(''); setAdding(false);
+    refresh();
+  };
+
+  return (
+    <>
+      {adding && (
+        <AddForm
+          namePlaceholder="Meeting name..."
+          date={date} setDate={setDate}
+          name={name} setName={setName}
+          time={time} setTime={setTime}
+          location={location} setLocation={setLocation}
+          notes={notes} setNotes={setNotes}
+          categoryId={categoryId} setCategoryId={setCategoryId}
+          categories={categories}
+          onAdd={handleAdd}
+          onCancel={() => setAdding(false)}
+          addLabel="Add Meeting"
+        />
+      )}
+
+      <div className="gig-list">
+        {meetings.map(mtg => <MeetingItem key={mtg.id} mtg={mtg} today={today} refresh={refresh} categories={categories} />)}
+        {meetings.length === 0 && !adding && (
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>No meetings yet.</div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function MeetingItem({ mtg, today, refresh, categories }) {
+  const [editing, setEditing]     = useState(false);
+  const [name, setName]           = useState(mtg.name);
+  const [date, setDate]           = useState(mtg.date);
+  const [time, setTime]           = useState(mtg.time || '');
+  const [location, setLocation]   = useState(mtg.location || '');
+  const [notes, setNotes]         = useState(mtg.notes || '');
+  const [categoryId, setCategoryId] = useState(mtg.categoryId || '');
+
+  const diff    = daysUntil(mtg.date, today);
+  const d       = new Date(mtg.date + 'T00:00:00');
+  const timeStr = mtg.time ? new Date(`1970-01-01T${mtg.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+  const cat     = mtg.categoryId ? (categories || []).find(c => c.id === mtg.categoryId) : null;
+
+  const handleSave = () => {
+    if (!name.trim() || !date) return;
+    updateMeeting(mtg.id, { name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
+    setEditing(false);
+    refresh();
+  };
+
+  if (editing) {
+    return (
+      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', padding: '12px 14px', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input autoFocus value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
+            style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
+          <input type="time" value={time} onChange={e => setTime(e.target.value)}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: time ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
+        </div>
+        <input placeholder="Location or link (optional)..." value={location} onChange={e => setLocation(e.target.value)}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 12, padding: '5px 9px', outline: 'none' }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input placeholder="Notes (optional)..." value={notes} onChange={e => setNotes(e.target.value)}
+            style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 12, padding: '5px 9px', outline: 'none' }} />
+          {categories && categories.length > 0 && (
+            <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: categoryId ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark', cursor: 'pointer' }}>
+              <option value="">Topic...</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>
+          <button className="btn" onClick={() => { deleteMeeting(mtg.id); refresh(); }} style={{ background: 'transparent', borderColor: '#e05050', color: '#e05050' }}>Delete</button>
+          <button className="btn primary" style={{ background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={handleSave}>Save</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`gig-item meeting${mtg.done ? ' done-gig' : ''}`}>
+      <div className="gig-date">
+        <div className="gig-month">{d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</div>
+        <div className="gig-day">{d.getDate()}</div>
+      </div>
+      <div className="gig-body">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className={`gig-name${mtg.done ? ' done' : ''}`}>{mtg.name}</div>
+          {cat && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-inprogress)', border: '1px solid var(--c-inprogress)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
+        </div>
+        <div className="gig-countdown">
+          {countdown(diff)}
+          {timeStr && <span style={{ color: 'var(--text-dimmer)', marginLeft: 6 }}>· {timeStr}</span>}
+        </div>
+        {mtg.location && (
+          <div className="gig-notes">
+            {/^https?:\/\//.test(mtg.location)
+              ? <a href={mtg.location} target="_blank" rel="noreferrer" style={{ color: 'var(--c-inprogress)', textDecoration: 'none' }}>{mtg.location}</a>
+              : mtg.location}
+          </div>
+        )}
+        {mtg.notes && <div className="gig-notes">{mtg.notes}</div>}
+      </div>
+      <div className="gig-actions">
+        <button className="o-act" onClick={() => { setName(mtg.name); setDate(mtg.date); setTime(mtg.time || ''); setLocation(mtg.location || ''); setNotes(mtg.notes || ''); setCategoryId(mtg.categoryId || ''); setEditing(true); }}>Edit</button>
+        <button className="o-act" onClick={() => { archiveMeeting(mtg.id); refresh(); }}>Archive</button>
+      </div>
+      <div className={`gig-check${mtg.done ? ' done' : ''}`} onClick={() => { updateMeeting(mtg.id, { done: !mtg.done }); refresh(); }} />
+    </div>
+  );
+}
+
+// ── Shared add form ───────────────────────────────────────────────────────────
+
+function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime, location, setLocation, notes, setNotes, categoryId, setCategoryId, categories, onAdd, onCancel, addLabel }) {
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          autoFocus
+          placeholder={namePlaceholder}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }}
+          onKeyDown={e => { if (e.key === 'Enter') onAdd(); if (e.key === 'Escape') onCancel(); }}
+        />
+        <input
+          type="date"
+          value={date}
+          onChange={e => setDate(e.target.value)}
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }}
+        />
+        {setTime !== undefined && (
+          <input
+            type="time"
+            value={time}
+            onChange={e => setTime(e.target.value)}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: time ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }}
+          />
+        )}
+      </div>
+      {setLocation !== undefined && (
+        <input
+          placeholder="Location or link (optional)..."
+          value={location}
+          onChange={e => setLocation(e.target.value)}
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 12, padding: '5px 9px', outline: 'none' }}
+        />
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          placeholder="Notes (optional)..."
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 12, padding: '5px 9px', outline: 'none' }}
+        />
+        {categories && categories.length > 0 && (
+          <select
+            value={categoryId}
+            onChange={e => setCategoryId(e.target.value)}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: categoryId ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark', cursor: 'pointer' }}
+          >
+            <option value="">Topic...</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button className="btn ghost" onClick={onCancel}>Cancel</button>
+        <button className="btn primary" onClick={onAdd}>{addLabel}</button>
+      </div>
     </div>
   );
 }

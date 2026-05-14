@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import MiniCalendar from './shared/MiniCalendar';
-import { getTasks, getEvents, todayKey, offsetDate, exportData } from '../db';
+import TopicPopup from './shared/TopicPopup';
+import { getTasks, getEvents, getCategories, addCategory, updateCategory, deleteCategory, todayKey, offsetDate, exportData, importData, clearAllData } from '../db';
 
 const PAGES = [
   { id: 'daily',  label: 'Daily',      color: 'var(--c-grateful)' },
@@ -9,8 +10,47 @@ const PAGES = [
   { id: 'gigs',   label: 'Gigs',       color: 'var(--c-gigs)' },
 ];
 
-export default function Sidebar({ page, setPage, viewDay, setViewDay, tick }) {
+const TOPIC_COLORS = [
+  'var(--c-todo)', 'var(--c-inprogress)', 'var(--c-backlog)',
+  'var(--c-completed)', 'var(--c-grateful)', 'var(--c-intentions)',
+];
+
+export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onClearData, openArchive, archiveOpen, onCloseArchive, onTopicChange }) {
   const today = todayKey();
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [importError, setImportError] = useState(null);
+  const [editingTopic, setEditingTopic] = useState(null);
+  const [topicPopup, setTopicPopup] = useState(null);
+  const newTopicRef = useRef();
+  const fileInputRef = useRef();
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = ''; // reset so same file can be re-selected
+    importData(file)
+      .then(() => { onClearData(); setImportError(null); })
+      .catch(err => setImportError(err.message));
+  };
+
+  const topics = useMemo(() => getCategories(), [tick]);
+
+  const handleAddTopic = () => {
+    const cat = addCategory({ name: 'New Topic', color: TOPIC_COLORS[topics.length % TOPIC_COLORS.length] });
+    onTopicChange?.();
+    setEditingTopic(cat.id);
+  };
+
+  const handleRenameTopic = (id, name) => {
+    updateCategory(id, { name: name.trim() || 'Untitled' });
+    onTopicChange?.();
+    setEditingTopic(null);
+  };
+
+  const handleDeleteTopic = (id) => {
+    deleteCategory(id);
+    onTopicChange?.();
+  };
 
   const counts = useMemo(() => {
     const tasks = getTasks().filter(t => !t.archived);
@@ -78,21 +118,123 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick }) {
         />
       ))}
 
-      <div style={{ marginTop: 'auto', padding: '10px 16px 12px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <FooterBtn onClick={() => {}}>⊡ Archive</FooterBtn>
-        <FooterBtn onClick={exportData}>⬇ Export Data</FooterBtn>
+      {/* Topics */}
+      <div style={{ borderTop: '1px solid var(--border)', marginTop: 8 }}>
+        <div style={{ padding: '10px 16px 4px', display: 'flex', alignItems: 'center' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666360', fontWeight: 500, flex: 1 }}>Topics</span>
+          <button onClick={handleAddTopic} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#666360', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
+            onMouseEnter={e => e.target.style.color = 'var(--text)'}
+            onMouseLeave={e => e.target.style.color = '#666360'}
+          >+</button>
+        </div>
+        {topics.map(topic => (
+          <div key={topic.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px' }}
+            onMouseEnter={e => e.currentTarget.querySelector('.topic-del').style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.querySelector('.topic-del').style.opacity = '0'}>
+            {editingTopic === topic.id ? (
+              <input
+                autoFocus
+                defaultValue={topic.name}
+                onBlur={e => handleRenameTopic(topic.id, e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleRenameTopic(topic.id, e.target.value);
+                  if (e.key === 'Escape') setEditingTopic(null);
+                }}
+                style={{ flex: 1, fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text)', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 3, padding: '1px 5px', outline: 'none' }}
+              />
+            ) : (
+              <span
+                onClick={() => setTopicPopup(topic.id)}
+                onDoubleClick={(e) => { e.stopPropagation(); setTopicPopup(null); setEditingTopic(topic.id); }}
+                style={{ flex: 1, fontFamily: 'var(--font-ui)', fontSize: 12, color: '#b5b1a8', cursor: 'pointer', userSelect: 'none' }}>
+                {topic.name}
+              </span>
+            )}
+            <button className="topic-del"
+              onClick={() => handleDeleteTopic(topic.id)}
+              style={{ opacity: 0, fontFamily: 'var(--font-mono)', fontSize: 9, color: '#666360', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'opacity 0.1s' }}
+              onMouseEnter={e => e.target.style.color = '#e05050'}
+              onMouseLeave={e => e.target.style.color = '#666360'}
+            >✕</button>
+          </div>
+        ))}
+        {topics.length === 0 && (
+          <div style={{ padding: '4px 16px 8px', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#444240' }}>No topics yet</div>
+        )}
       </div>
+
+      <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '10px 16px 2px', fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#666360', fontWeight: 500 }}>
+          Settings
+        </div>
+        <div style={{ padding: '4px 16px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <FooterBtn onClick={() => archiveOpen ? onCloseArchive() : openArchive('activity')}>⊡ Activity</FooterBtn>
+          <FooterBtn onClick={exportData}>⬇ Export Data</FooterBtn>
+          <FooterBtn onClick={() => fileInputRef.current?.click()}>⬆ Import Data</FooterBtn>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={handleImport}
+          />
+          {importError && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#e05050', padding: '4px 2px', lineHeight: 1.5 }}>
+              {importError}
+            </div>
+          )}
+          <FooterBtn danger onClick={() => setConfirmClear(true)}>⚠ Clear All Data</FooterBtn>
+        </div>
+      </div>
+
+      {topicPopup && (
+        <TopicPopup topicId={topicPopup} onClose={() => setTopicPopup(null)} tick={tick} />
+      )}
+
+      {confirmClear && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        }} onClick={() => setConfirmClear(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--surface2)', border: '1px solid var(--border2)',
+            borderRadius: 8, padding: '28px 32px', width: 360,
+            display: 'flex', flexDirection: 'column', gap: 16,
+          }}>
+            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
+              Clear all data?
+            </div>
+            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+              This will permanently delete all tasks, gigs, gratitudes, intentions, and settings.
+              This cannot be undone.
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#e05050', background: 'rgba(224,80,80,0.08)', border: '1px solid rgba(224,80,80,0.2)', borderRadius: 4, padding: '8px 12px' }}>
+              Export your data first if you want a backup.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button className="btn ghost" onClick={() => setConfirmClear(false)}>Cancel</button>
+              <button
+                className="btn"
+                onClick={() => { clearAllData(); onClearData(); setConfirmClear(false); }}
+                style={{ background: '#e05050', borderColor: '#e05050', color: '#fff' }}
+              >Delete Everything</button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
 
-function FooterBtn({ onClick, children }) {
+function FooterBtn({ onClick, children, danger }) {
   const [hovered, setHovered] = useState(false);
+  const baseColor = danger ? '#7a3030' : '#8a8680';
+  const hoverColor = danger ? '#e05050' : 'var(--text)';
   return (
     <button onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: hovered ? 'var(--text)' : '#8a8680', cursor: 'pointer', padding: '4px 0', background: 'none', border: 'none', textAlign: 'left', transition: 'color 0.1s' }}>
+      style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: hovered ? hoverColor : baseColor, cursor: 'pointer', padding: '5px 0', background: 'none', border: 'none', textAlign: 'left', transition: 'color 0.1s', width: '100%', display: 'block' }}>
       {children}
     </button>
   );

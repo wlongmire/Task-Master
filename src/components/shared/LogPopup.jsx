@@ -9,10 +9,9 @@ export default function LogPopup({ taskId, type, onDone, onCancel }) {
   const task = getTasks().find(t => t.id === taskId);
   const isDone = type === 'done';
   const eyebrow = isDone ? '✓ Complete task' : '◐ Log progress';
-  const placeholder = isDone ? 'Add a note (optional)...' : 'What progress did you make?';
+  const placeholder = isDone ? 'Add a note (optional)...' : 'What progress did you make? (optional)';
 
   const handleSubmit = () => {
-    if (!isDone && !note.trim()) return;
     onDone(note.trim() || null);
   };
 

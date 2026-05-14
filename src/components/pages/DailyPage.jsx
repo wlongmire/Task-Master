@@ -64,13 +64,6 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div className="page-title">Daily</div>
-        <div className="page-subtitle">· journal · {isToday ? 'resets at midnight' : 'viewing past day'}</div>
-        <div className="page-actions">
-          <button className="btn ghost" onClick={() => openArchive('grateful')}>Past entries</button>
-        </div>
-      </div>
       <div className="page-grid single">
         <NotebookSection
           title="Gratitudes"

@@ -1,13 +1,34 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  getTasks, getCategories, addTask, updateTask, moveTask,
-  archiveTask, addLogEntry, todayKey
+  getTasks, getCategories, addTask, insertTaskAfter, updateTask, moveTask,
+  archiveTask, deleteTask, addLogEntry, todayKey
 } from '../../db';
 
+// Survives remounts — stores the task ID to focus after next render
+let _pendingFocus = null;
+export function scheduleOutlinerFocus(taskId) { _pendingFocus = taskId; }
+
 // listState: 'todo' | 'backlog' | 'inprogress'
-export default function Outliner({ listState, viewDay, refresh, openLogPopup }) {
-  const [collapsed, setCollapsed] = useState(new Set());
+export default function Outliner({ listState, viewDay, refresh, openLogPopup, onEnd, onStart }) {
+  const [collapsed, setCollapsed] = useState(() => {
+    const cats = getCategories();
+    const allTasks = getTasks().filter(t => !t.archived && t.state === listState);
+    return new Set(cats.filter(c => !allTasks.some(t => t.categoryId === c.id)).map(c => c.id));
+  });
   const [expanded, setExpanded] = useState(new Set()); // detail panels
+  const containerRef = useRef();
+
+  // After every render, check if we need to focus a task input
+  useEffect(() => {
+    if (!_pendingFocus || !containerRef.current) return;
+    const input = containerRef.current.querySelector(`input[data-task-id="${_pendingFocus}"]`);
+    if (input) {
+      input.focus();
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+      _pendingFocus = null;
+    }
+  });
 
   const tasks = getTasks().filter(t => {
     if (t.archived || t.state !== listState) return false;
@@ -17,9 +38,121 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup }) 
   const categories = getCategories();
 
   const toggleCat = (catId) => setCollapsed(s => { const n = new Set(s); n.has(catId) ? n.delete(catId) : n.add(catId); return n; });
+
   const toggleDetail = (taskId) => setExpanded(s => { const n = new Set(s); n.has(taskId) ? n.delete(taskId) : n.add(taskId); return n; });
 
+  const handleDelete = useCallback((taskId) => {
+    if (!containerRef.current) return;
+    const nodes = [...containerRef.current.querySelectorAll('input[data-task-id], [data-add-cat]')];
+    const idx = nodes.findIndex(n => n.dataset.taskId === taskId);
+    const prev = idx > 0 ? nodes[idx - 1] : null;
+    deleteTask(taskId);
+    if (prev) {
+      if (prev.dataset.taskId) {
+        _pendingFocus = prev.dataset.taskId;
+      } else {
+        // It's an add row — focus it directly after delete + refresh
+        const addCat = prev.dataset.addCat;
+        setTimeout(() => {
+          const el = containerRef.current?.querySelector(`[data-add-cat="${addCat}"]`);
+          if (el) el.focus();
+        }, 0);
+      }
+    }
+    refresh();
+  }, [refresh]);
+
+  const focusNode = (node) => {
+    if (!node) return;
+    node.focus();
+    if (node.setSelectionRange) node.setSelectionRange(node.value?.length ?? 0, node.value?.length ?? 0);
+  };
+
+  const expandAndEnter = useCallback((topicId) => {
+    setCollapsed(s => { const n = new Set(s); n.delete(topicId); return n; });
+    const topicTask = tasks.find(t => !t.archived && t.state === listState && t.categoryId === topicId && (listState !== 'todo' || t.dayKey === viewDay));
+    if (topicTask) { _pendingFocus = topicTask.id; }
+    else { setTimeout(() => containerRef.current?.querySelector(`[data-add-cat="${topicId}"]`)?.focus(), 30); }
+  }, [tasks, listState, viewDay, setCollapsed]);
+
+  const collapseAndLeave = useCallback((topicId, dir) => {
+    setCollapsed(s => { const n = new Set(s); n.add(topicId); return n; });
+    setTimeout(() => {
+      if (!containerRef.current) return;
+      const nodes = [...containerRef.current.querySelectorAll('input[data-task-id], [data-add-cat]')];
+      const addRow = containerRef.current.querySelector(`[data-add-cat="${topicId}"]`);
+      // After collapse, add row is gone — find the item just before/after where it was
+      const allWithHeaders = [...containerRef.current.querySelectorAll('input[data-task-id], [data-add-cat], [data-topic-id]')];
+      const header = containerRef.current.querySelector(`[data-topic-id="${topicId}"]`);
+      const headerIdx = allWithHeaders.indexOf(header);
+      if (dir === 'down') {
+        const after = allWithHeaders.slice(headerIdx + 1).find(n => n.dataset.taskId || (n.dataset.addCat && n.dataset.addCat !== topicId));
+        focusNode(after);
+      } else {
+        const before = [...allWithHeaders.slice(0, headerIdx)].reverse().find(n => n.dataset.taskId || n.dataset.addCat);
+        focusNode(before);
+      }
+    }, 30);
+  }, [setCollapsed]);
+
+  const handleArrow = useCallback((taskId, dir) => {
+    if (!containerRef.current) return;
+    const allNodes = [...containerRef.current.querySelectorAll('input[data-task-id], [data-add-cat], [data-topic-id]')];
+    const visNodes = [...containerRef.current.querySelectorAll('input[data-task-id], [data-add-cat]')];
+    const visIdx = visNodes.findIndex(n => n.dataset.taskId === taskId);
+    if (visIdx === -1) return;
+
+    if (dir === 'down') {
+      const next = visNodes[visIdx + 1];
+      const curAllIdx = allNodes.findIndex(n => n.dataset.taskId === taskId);
+      const nextAllIdx = next ? allNodes.indexOf(next) : allNodes.length;
+      const collapsedHeader = allNodes.slice(curAllIdx + 1, nextAllIdx).find(n => n.dataset.topicId);
+      if (collapsedHeader) { expandAndEnter(collapsedHeader.dataset.topicId); return; }
+      if (!next) { onEnd?.(); return; }
+      focusNode(next);
+    } else {
+      if (visIdx === 0) { onStart?.(); return; }
+      focusNode(visNodes[visIdx - 1]);
+    }
+  }, [expandAndEnter, onEnd, onStart]);
+
+  const handleAddRowArrow = useCallback((catId, dir) => {
+    if (!containerRef.current) return;
+    const allNodes = [...containerRef.current.querySelectorAll('input[data-task-id], [data-add-cat], [data-topic-id]')];
+    const visNodes = [...containerRef.current.querySelectorAll('input[data-task-id], [data-add-cat]')];
+    const current = containerRef.current.querySelector(`[data-add-cat="${catId}"]`);
+    const visIdx = visNodes.indexOf(current);
+
+    if (dir === 'down') {
+      // If this is an empty topic, collapse it and move on
+      const hasTasks = catId !== 'none' && tasks.some(t => !t.archived && t.categoryId === catId && t.state === listState && (listState !== 'todo' || t.dayKey === viewDay));
+      if (catId !== 'none' && !hasTasks) { collapseAndLeave(catId, 'down'); return; }
+      // Check for collapsed topic header after this add row
+      const curAllIdx = allNodes.indexOf(current);
+      const next = visNodes[visIdx + 1];
+      const nextAllIdx = next ? allNodes.indexOf(next) : allNodes.length;
+      const collapsedHeader = allNodes.slice(curAllIdx + 1, nextAllIdx).find(n => n.dataset.topicId);
+      if (collapsedHeader) { expandAndEnter(collapsedHeader.dataset.topicId); return; }
+      if (!next) { onEnd?.(); return; }
+      focusNode(next);
+    } else {
+      if (visIdx === 0) { onStart?.(); return; }
+      focusNode(visNodes[visIdx - 1]);
+    }
+  }, [tasks, listState, viewDay, expandAndEnter, collapseAndLeave, onEnd, onStart]);
+
+  const handleEnter = useCallback((taskId, catId) => {
+    const newTask = insertTaskAfter(taskId, {
+      text: '', state: listState,
+      categoryId: catId || null,
+      dayKey: listState === 'todo' ? viewDay : undefined,
+    });
+    _pendingFocus = newTask.id;
+    refresh();
+  }, [listState, viewDay, refresh]);
+
   const handleAction = useCallback((action, taskId) => {
+    if (action === '_refresh') { refresh(); return; }
     const task = getTasks().find(t => t.id === taskId);
     if (!task) return;
 
@@ -50,6 +183,9 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup }) 
     } else if (action === 'archive') {
       archiveTask(taskId);
       refresh();
+    } else if (action === 'delete') {
+      deleteTask(taskId);
+      refresh();
     } else if (action === 'toggle-urgent') {
       updateTask(taskId, { urgent: !task.urgent });
       refresh();
@@ -60,24 +196,31 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup }) 
     updateTask(taskId, { text });
   }, []);
 
-  const handleNewTask = useCallback((catId) => {
-    const now = Date.now();
-    addTask({ text: '', state: listState, categoryId: catId || null, dayKey: listState === 'todo' ? viewDay : undefined });
+  const handleNewTask = useCallback((catId, initialText = '') => {
+    const newTask = addTask({ text: initialText, state: listState, categoryId: catId || null, dayKey: listState === 'todo' ? viewDay : undefined });
+    _pendingFocus = newTask.id;
     refresh();
   }, [listState, viewDay, refresh]);
 
-  // Group by category
+  // Group by category — show all topics even if empty
   const uncategorized = tasks.filter(t => !t.categoryId);
   const catGroups = categories.map(cat => ({
     cat,
     tasks: tasks.filter(t => t.categoryId === cat.id),
-  })).filter(g => g.tasks.length > 0);
+  })).sort((a, b) => {
+    const score = ({ tasks: ts }) => {
+      if (ts.some(t => t.urgent))  return 0;
+      if (ts.some(t => t.dueDate)) return 1;
+      if (ts.length > 0)           return 2;
+      return 3; // empty topics last
+    };
+    return score(a) - score(b);
+  });
 
-  // Auto-collapse empty categories (ones with no tasks in this state)
-  const allCatsWithTasks = new Set(tasks.map(t => t.categoryId).filter(Boolean));
+  const addLabel = listState === 'todo' ? 'Add task...' : listState === 'backlog' ? 'Add to backlog...' : 'Start something...';
 
   return (
-    <div className="outliner">
+    <div className="outliner" ref={containerRef}>
       {/* Uncategorized tasks */}
       {uncategorized.map(task => (
         <TaskRow
@@ -88,65 +231,118 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup }) 
           expanded={expanded.has(task.id)}
           onToggleDetail={() => toggleDetail(task.id)}
           onAction={handleAction}
+          onDelete={handleDelete}
+          onEnter={handleEnter}
+          onArrow={handleArrow}
           onTextChange={handleTextChange}
         />
       ))}
 
-      {/* Categorized groups */}
+      {/* Uncategorized add row */}
+      <div className="o-add" tabIndex={0} data-add-cat="none"
+        onClick={() => handleNewTask(null)}
+        onKeyDown={e => {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); handleAddRowArrow('none', e.key === 'ArrowUp' ? 'up' : 'down'); }
+          else if (e.key === 'Enter') { e.preventDefault(); handleNewTask(null); }
+          else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); handleNewTask(null, e.key); }
+        }}>
+        <div className={`o-add-plus ${listState}`}>+</div>
+        <div className="o-add-label">{addLabel}</div>
+      </div>
+
+      {/* Topic groups */}
       {catGroups.map(({ cat, tasks: catTasks }) => (
-        <div key={cat.id}>
-          {/* Category header */}
-          <div className="o-row" onClick={() => toggleCat(cat.id)} style={{ marginTop: uncategorized.length > 0 || catGroups.indexOf({ cat, tasks: catTasks }) > 0 ? 6 : 0 }}>
+        <div key={cat.id} style={{ marginTop: 10 }}>
+          {/* Topic header */}
+          <div className="o-row" data-topic-id={collapsed.has(cat.id) ? cat.id : undefined} onClick={() => toggleCat(cat.id)}>
             <div className={`o-chev${collapsed.has(cat.id) ? ' collapsed' : ''}`}>▾</div>
             <div className="o-body" style={{ paddingLeft: 2 }}>
-              <input
-                className={`o-input is-cat ${listState}`}
-                defaultValue={cat.name}
-                onClick={e => e.stopPropagation()}
-                onBlur={e => updateTask(cat.id, { name: e.target.value })}
-              />
+              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>
+                {cat.name}
+              </span>
             </div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', marginLeft: 'auto' }}>
+              {catTasks.length || ''}
+            </span>
           </div>
 
-          {/* Category children */}
-          {!collapsed.has(cat.id) && catTasks.map(task => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              listState={listState}
-              depth={1}
-              expanded={expanded.has(task.id)}
-              onToggleDetail={() => toggleDetail(task.id)}
-              onAction={handleAction}
-              onTextChange={handleTextChange}
-            />
-          ))}
+          {/* Topic tasks + add row */}
+          {!collapsed.has(cat.id) && (
+            <>
+              {catTasks.map(task => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  listState={listState}
+                  depth={1}
+                  expanded={expanded.has(task.id)}
+                  onToggleDetail={() => toggleDetail(task.id)}
+                  onAction={handleAction}
+                  onDelete={handleDelete}
+                  onEnter={handleEnter}
+                  onArrow={handleArrow}
+                  onTextChange={handleTextChange}
+                />
+              ))}
+              <div className="o-add" style={{ paddingLeft: 36 }} tabIndex={0} data-add-cat={cat.id}
+                onClick={() => handleNewTask(cat.id)}
+                onKeyDown={e => {
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); handleAddRowArrow(cat.id, e.key === 'ArrowUp' ? 'up' : 'down'); }
+                  else if (e.key === 'Enter') { e.preventDefault(); handleNewTask(cat.id); }
+                  else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); handleNewTask(cat.id, e.key); }
+                }}>
+                <div className={`o-add-plus ${listState}`}>+</div>
+                <div className="o-add-label">{addLabel}</div>
+              </div>
+            </>
+          )}
         </div>
       ))}
-
-      {tasks.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#ccc', padding: '12px 4px' }}>
-          Nothing here yet.
-        </div>
-      )}
-
-      <div className="o-add" onClick={() => handleNewTask(null)}>
-        <div className={`o-add-plus ${listState}`}>+</div>
-        <div className="o-add-label">
-          {listState === 'todo' ? 'Add task...' : listState === 'backlog' ? 'Add to backlog...' : 'Start something...'}
-        </div>
-      </div>
     </div>
   );
 }
 
-function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, onTextChange }) {
+function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, onDelete, onEnter, onArrow, onTextChange }) {
   const lastLog = task.log && task.log.length > 0 ? task.log[task.log.length - 1] : null;
   const logCount = task.log ? task.log.length : 0;
+  const wrapperRef = useRef();
+  const inputRef = useRef();
+  const scrollRaf = useRef();
+
+  const handleBlur = (e) => {
+    // Close the panel if focus moves outside this entire row+panel group
+    if (expanded && !wrapperRef.current?.contains(e.relatedTarget)) {
+      onToggleDetail();
+    }
+  };
+
+  const startScroll = useCallback(() => {
+    const el = inputRef.current;
+    if (!el || document.activeElement === el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    if (max <= 0) return;
+    const duration = 800 + max * 18; // scale with text length
+    let t0 = null;
+    const step = (ts) => {
+      if (!t0) t0 = ts;
+      const p = Math.min((ts - t0) / duration, 1);
+      // ease-in-out cubic
+      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      el.scrollLeft = e * max;
+      if (p < 1) scrollRaf.current = requestAnimationFrame(step);
+    };
+    scrollRaf.current = requestAnimationFrame(step);
+  }, []);
+
+  const stopScroll = useCallback(() => {
+    cancelAnimationFrame(scrollRaf.current);
+    if (inputRef.current) inputRef.current.scrollLeft = 0;
+  }, []);
 
   return (
-    <>
+    <div ref={wrapperRef} onBlur={handleBlur} onKeyDown={e => { if (e.key === 'Escape' && expanded) { e.stopPropagation(); onToggleDetail(); } }}>
       <div className="o-row" data-depth={depth || undefined}>
+        {depth > 0 && <span style={{ width: 14, flexShrink: 0, textAlign: 'center', fontSize: 16, lineHeight: '30px', color: 'var(--text-dimmer)', userSelect: 'none', marginLeft: -4 }}>·</span>}
         <div
           className={`o-check${task.done ? ' done' : ''}`}
           onClick={onToggleDetail}
@@ -154,17 +350,36 @@ function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, o
         />
         <div className="o-body">
           <input
+            ref={inputRef}
             className={`o-input${task.done ? ' is-done' : ''}`}
+            data-task-id={task.id}
             defaultValue={task.text}
             placeholder="Task..."
-            onBlur={e => onTextChange(task.id, e.target.value)}
+            onMouseEnter={startScroll}
+            onMouseLeave={stopScroll}
+            onFocus={stopScroll}
+            onBlur={e => { stopScroll(); onTextChange(task.id, e.target.value); }}
+            onKeyDown={e => {
+              if (e.key === 'Backspace' && e.target.value === '') {
+                e.preventDefault();
+                onDelete(task.id);
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                onTextChange(task.id, e.target.value);
+                onEnter(task.id, task.categoryId || null);
+              } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                onArrow(task.id, e.key === 'ArrowUp' ? 'up' : 'down');
+              }
+            }}
           />
-          {task.urgent && <span className="urgent-badge">! URGENT</span>}
           {lastLog?.note && !expanded && (
             <div className="o-log-note">{lastLog.note}</div>
           )}
           {task.dueDate && (
-            <div className="o-meta">Due {task.dueDate}</div>
+            <div className="o-meta" style={{ color: task.dueDate < todayKey() ? 'var(--c-todo)' : 'var(--text-dimmer)' }}>
+              Due {new Date(task.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </div>
           )}
         </div>
         <div className="o-actions">
@@ -179,7 +394,8 @@ function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, o
           {listState === 'todo' && (
             <>
               <button className="o-act start" onClick={() => onAction('start', task.id)}>▶ Start</button>
-              <button className="o-act" onClick={() => onAction('defer', task.id)}>↓ Defer</button>
+              <button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button>
+              <button className="o-act" onClick={() => onAction('defer', task.id)}>← Back</button>
             </>
           )}
           {listState === 'inprogress' && (
@@ -189,19 +405,19 @@ function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, o
               <button className="o-act" onClick={() => onAction('back', task.id)}>← Back</button>
             </>
           )}
-          {listState !== 'inprogress' && (
+          {listState === 'backlog' && (
             <button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button>
           )}
           <button className="o-act" onClick={() => onAction('archive', task.id)}>Archive</button>
         </div>
       </div>
 
-      {expanded && <DetailPanel task={task} />}
-    </>
+      {expanded && <DetailPanel task={task} onAction={onAction} />}
+    </div>
   );
 }
 
-function DetailPanel({ task }) {
+function DetailPanel({ task, onAction }) {
   const LOG_TYPE_LABELS = { created: 'Created', started: 'Started', progress: 'Progress', done: 'Done' };
 
   return (
@@ -213,6 +429,53 @@ function DetailPanel({ task }) {
         defaultValue={task.description || ''}
         onBlur={e => updateTask(task.id, { description: e.target.value })}
       />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dimmer)' }}>Due</span>
+          <input
+            type="date"
+            defaultValue={task.dueDate || ''}
+            onBlur={e => updateTask(task.id, { dueDate: e.target.value || null })}
+            style={{
+              fontFamily: 'var(--font-mono)', fontSize: 11, color: task.dueDate ? 'inherit' : 'var(--text-dimmer)',
+              background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer',
+              colorScheme: 'dark',
+            }}
+          />
+          {task.dueDate && (
+            <button
+              onClick={() => updateTask(task.id, { dueDate: null })}
+              style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              onMouseEnter={e => e.target.style.color = 'var(--text)'}
+              onMouseLeave={e => e.target.style.color = 'var(--text-dimmer)'}
+            >✕ clear</button>
+          )}
+        </div>
+
+        <button
+          onClick={() => onAction('toggle-urgent', task.id)}
+          style={{
+            fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+            width: 22, height: 22, borderRadius: 3, cursor: 'pointer', border: '1px solid',
+            background: 'transparent',
+            borderColor: task.urgent ? '#e05050' : 'var(--border2)',
+            color: task.urgent ? '#e05050' : 'var(--text-dimmer)',
+            transition: 'all 0.1s', flexShrink: 0,
+          }}
+        >!</button>
+
+        <button
+          onClick={() => onAction('delete', task.id)}
+          style={{
+            marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 9,
+            letterSpacing: '0.08em', color: '#7a3030', background: 'none',
+            border: 'none', cursor: 'pointer', padding: '2px 4px', transition: 'color 0.1s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = '#e05050'}
+          onMouseLeave={e => e.currentTarget.style.color = '#7a3030'}
+        >✕ delete</button>
+
+      </div>
       {task.log && task.log.length > 0 && (
         <>
           <div className="log-header">Activity</div>
