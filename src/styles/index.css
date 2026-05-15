@@ -439,12 +439,21 @@ html, body {
   .hide-mobile { display: none !important; }
   .show-mobile { display: flex !important; }
 
-  .o-row:hover,
-  .o-act:hover,
-  .comp-item:hover,
-  .comp-act:hover,
-  .gig-item:hover,
-  .o-add:hover { background: none !important; color: inherit; border-color: inherit; opacity: inherit; }
+  /* Kill all hover effects — touch devices have no hover */
+  .o-row:hover { background: none !important; }
+  .o-row:hover .o-actions { opacity: 0; } /* defeat desktop hover-reveal */
+  .o-act:hover { color: var(--text-dim) !important; border-color: var(--border2) !important; background: none !important; }
+  .o-act.promote:hover { color: var(--c-backlog) !important; }
+  .o-act.start:hover { color: var(--c-inprogress) !important; }
+  .o-act.done-btn:hover { color: var(--c-completed) !important; }
+  .o-act.progress:hover { color: var(--c-inprogress) !important; }
+  .o-act-details:hover { color: var(--text) !important; }
+  .comp-item:hover { background: none !important; }
+  .comp-act:hover { color: var(--text-dimmer) !important; border-color: var(--border2) !important; background: none !important; }
+  .gig-item:hover { background: none !important; }
+  .o-add:hover { background: none !important; }
+  /* Actions rendered by React on mobile must be fully visible */
+  .o-actions { opacity: 1 !important; }
 
   .o-task-row { flex-wrap: wrap; }
   .o-task-row .o-body { flex-basis: 100%; }
