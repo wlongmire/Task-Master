@@ -65,28 +65,30 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
   return (
     <div className="page">
       <div className="page-grid single">
-        <NotebookSection
-          title="Gratitudes"
-          colorVar="--c-grateful"
-          label="What I'm thankful for today"
-          placeholder="Write freely — one thing, or many..."
-          hint={isToday ? 'Resets at midnight · saved to archive' : 'Read-only — past day'}
-          value={grateful}
-          onChange={handleGrateful}
-          readOnly={!isToday}
-          onArchive={() => openArchive('grateful')}
-        />
-        <NotebookSection
-          title="Intentions"
-          colorVar="--c-intentions"
-          label="Things I want — in any sense of the word"
-          placeholder="Material things, experiences, feelings..."
-          hint={isToday ? 'Saved as you type · versions in archive' : 'Read-only — past day'}
-          value={intentions}
-          onChange={handleIntentions}
-          readOnly={!isToday}
-          onArchive={() => openArchive('intentions')}
-        />
+        <div className="hide-mobile" style={{ display: 'contents' }}>
+          <NotebookSection
+            title="Gratitudes"
+            colorVar="--c-grateful"
+            label="What I'm thankful for today"
+            placeholder="Write freely — one thing, or many..."
+            hint={isToday ? 'Resets at midnight · saved to archive' : 'Read-only — past day'}
+            value={grateful}
+            onChange={handleGrateful}
+            readOnly={!isToday}
+            onArchive={() => openArchive('grateful')}
+          />
+          <NotebookSection
+            title="Intentions"
+            colorVar="--c-intentions"
+            label="Things I want — in any sense of the word"
+            placeholder="Material things, experiences, feelings..."
+            hint={isToday ? 'Saved as you type · versions in archive' : 'Read-only — past day'}
+            value={intentions}
+            onChange={handleIntentions}
+            readOnly={!isToday}
+            onArchive={() => openArchive('intentions')}
+          />
+        </div>
       </div>
     </div>
   );
