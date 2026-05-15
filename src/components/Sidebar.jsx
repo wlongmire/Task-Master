@@ -248,7 +248,6 @@ function NavItem({ label, color, active, count, onClick }) {
       padding: '6px 16px', cursor: 'pointer',
       fontFamily: 'var(--font-ui)', fontSize: 13,
       color: active ? 'var(--text)' : '#b5b1a8',
-      borderLeft: `2px solid ${active ? color : 'transparent'}`,
       background: active ? 'var(--surface2)' : 'transparent',
       fontWeight: active ? 600 : 400,
       borderTop: 'none', borderRight: 'none', borderBottom: 'none',
