@@ -74,10 +74,37 @@ export function initDB(uid, onRefresh, onReady) {
     _unsubs.push(unsub);
   }
 
+  // Safari kills WebSocket connections in the background and doesn't always
+  // re-fire onSnapshot when the tab comes back. Force a full re-fetch on
+  // visibility restore or network reconnect so data is never stale.
+  const resync = () => {
+    if (document.hidden || !_uid) return;
+    const arrayCols = ['tasks', 'events', 'meetings', 'categories'];
+    const mapCols   = ['grateful', 'intentions', 'briefings'];
+    Promise.all([
+      ...arrayCols.map(col =>
+        getDocs(_userCol(col)).then(snap => {
+          _cache[col] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        })
+      ),
+      ...mapCols.map(col =>
+        getDocs(_userCol(col)).then(snap => {
+          _cache[col] = {};
+          snap.docs.forEach(d => { _cache[col][d.id] = d.data(); });
+        })
+      ),
+    ]).then(() => _refreshFn?.()).catch(err => console.warn('resync failed', err));
+  };
+
+  document.addEventListener('visibilitychange', resync);
+  window.addEventListener('online', resync);
+
   return () => {
     _unsubs.forEach(fn => fn());
     _unsubs = []; _uid = null; _refreshFn = null; _onReadyFn = null;
     _loaded = new Set();
+    document.removeEventListener('visibilitychange', resync);
+    window.removeEventListener('online', resync);
   };
 }
 
