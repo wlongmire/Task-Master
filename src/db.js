@@ -14,6 +14,11 @@ function genId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+// ── Firestore sanitizer (strips undefined, which Firestore rejects) ────────────
+function clean(obj) {
+  return JSON.parse(JSON.stringify(obj, (_, v) => v === undefined ? null : v));
+}
+
 // ── Local cache ───────────────────────────────────────────────────────────────
 let _uid       = null;
 let _refreshFn = null;
@@ -100,7 +105,7 @@ export function getGratefulDays()     { return Object.keys(_cache.grateful).filt
 export function setGrateful(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.grateful[dk] = val;
-  setDoc(_userDoc('grateful', dk), val);
+  setDoc(_userDoc('grateful', dk), clean(val));
 }
 
 // ── Intentions ────────────────────────────────────────────────────────────────
@@ -109,7 +114,7 @@ export function getIntentionsDays()     { return Object.keys(_cache.intentions).
 export function setIntentions(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.intentions[dk] = val;
-  setDoc(_userDoc('intentions', dk), val);
+  setDoc(_userDoc('intentions', dk), clean(val));
 }
 
 // ── Daily Briefing ────────────────────────────────────────────────────────────
@@ -117,7 +122,7 @@ export function getDailyBriefing(dk)          { return _cache.briefings[dk] || {
 export function setDailyBriefing(dk, updates) {
   const val = { ...(_cache.briefings[dk] || {}), ...updates };
   _cache.briefings[dk] = val;
-  setDoc(_userDoc('briefings', dk), val);
+  setDoc(_userDoc('briefings', dk), clean(val));
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
@@ -135,7 +140,7 @@ export function addTask(task) {
     ...task,
   };
   _cache.tasks = [..._cache.tasks, newTask];
-  setDoc(_userDoc('tasks', newTask.id), newTask);
+  setDoc(_userDoc('tasks', newTask.id), clean(newTask));
   _refreshFn?.();
   return newTask;
 }
@@ -158,7 +163,7 @@ export function insertTaskAfter(afterId, task) {
     ...task,
   };
   _cache.tasks = [..._cache.tasks, newTask];
-  setDoc(_userDoc('tasks', newTask.id), newTask);
+  setDoc(_userDoc('tasks', newTask.id), clean(newTask));
   _refreshFn?.();
   return newTask;
 }
@@ -167,7 +172,7 @@ export function updateTask(id, updates) {
   const idx = _cache.tasks.findIndex(t => t.id === id);
   if (idx === -1) return;
   _cache.tasks[idx] = { ..._cache.tasks[idx], ...updates };
-  updateDoc(_userDoc('tasks', id), updates);
+  updateDoc(_userDoc('tasks', id), clean(updates));
   _refreshFn?.();
 }
 
@@ -203,7 +208,7 @@ export function addLogEntry(taskId, { type, note = null }) {
   const entry      = { id: String(Date.now()), type, note, loggedAt: Date.now() };
   const updatedLog = [...(_cache.tasks[idx].log || []), entry];
   _cache.tasks[idx] = { ..._cache.tasks[idx], log: updatedLog };
-  updateDoc(_userDoc('tasks', taskId), { log: updatedLog });
+  updateDoc(_userDoc('tasks', taskId), clean({ log: updatedLog }));
   _refreshFn?.();
   return entry;
 }
@@ -224,7 +229,7 @@ export function getCategories() { return [..._cache.categories]; }
 export function addCategory(cat) {
   const newCat = { id: genId(), ...cat };
   _cache.categories = [..._cache.categories, newCat];
-  setDoc(_userDoc('categories', newCat.id), newCat);
+  setDoc(_userDoc('categories', newCat.id), clean(newCat));
   _refreshFn?.();
   return newCat;
 }
@@ -232,7 +237,7 @@ export function updateCategory(id, updates) {
   const idx = _cache.categories.findIndex(c => c.id === id);
   if (idx === -1) return;
   _cache.categories[idx] = { ..._cache.categories[idx], ...updates };
-  updateDoc(_userDoc('categories', id), updates);
+  updateDoc(_userDoc('categories', id), clean(updates));
   _refreshFn?.();
 }
 export function deleteCategory(id) {
@@ -247,7 +252,7 @@ export function getEvents() { return [..._cache.events]; }
 export function addEvent(evt) {
   const newEvt = { id: genId(), archived: false, done: false, ...evt };
   _cache.events = [..._cache.events, newEvt];
-  setDoc(_userDoc('events', newEvt.id), newEvt);
+  setDoc(_userDoc('events', newEvt.id), clean(newEvt));
   _refreshFn?.();
   return newEvt;
 }
@@ -255,7 +260,7 @@ export function updateEvent(id, updates) {
   const idx = _cache.events.findIndex(e => e.id === id);
   if (idx === -1) return;
   _cache.events[idx] = { ..._cache.events[idx], ...updates };
-  updateDoc(_userDoc('events', id), updates);
+  updateDoc(_userDoc('events', id), clean(updates));
   _refreshFn?.();
 }
 export function archiveEvent(id) { updateEvent(id, { archived: true }); }
@@ -271,7 +276,7 @@ export function getMeetings() { return [..._cache.meetings]; }
 export function addMeeting(mtg) {
   const newMtg = { id: genId(), archived: false, done: false, ...mtg };
   _cache.meetings = [..._cache.meetings, newMtg];
-  setDoc(_userDoc('meetings', newMtg.id), newMtg);
+  setDoc(_userDoc('meetings', newMtg.id), clean(newMtg));
   _refreshFn?.();
   return newMtg;
 }
@@ -279,7 +284,7 @@ export function updateMeeting(id, updates) {
   const idx = _cache.meetings.findIndex(m => m.id === id);
   if (idx === -1) return;
   _cache.meetings[idx] = { ..._cache.meetings[idx], ...updates };
-  updateDoc(_userDoc('meetings', id), updates);
+  updateDoc(_userDoc('meetings', id), clean(updates));
   _refreshFn?.();
 }
 export function archiveMeeting(id) { updateMeeting(id, { archived: true }); }
