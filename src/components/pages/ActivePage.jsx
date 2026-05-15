@@ -144,15 +144,15 @@ function CompletedItem({ task, refresh, viewDay }) {
         style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: hasLog ? 'pointer' : 'default' }}>
         <div className="comp-check" style={{ flexShrink: 0 }} />
         <div className="comp-title" style={{ flex: 1 }}>{task.text}</div>
-        <div className="comp-meta" style={{ flexShrink: 0 }}>{timeStr}</div>
-        {hasLog && <div style={{ fontSize: 10, color: 'var(--text-dimmer)', flexShrink: 0 }}>{expanded ? '▾' : '▸'}</div>}
+        <div className="comp-meta comp-time" style={{ flexShrink: 0 }}>{timeStr}</div>
+        {hasLog && <div className="comp-expand-arrow" style={{ fontSize: 10, color: 'var(--text-dimmer)', flexShrink: 0 }}>{expanded ? '▾' : '▸'}</div>}
         <div className="comp-actions" style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           <button className="comp-act" onClick={() => { restoreTask(task.id, viewDay); refresh(); }}>↩ Restore</button>
           <button className="comp-act" onClick={() => { archiveTask(task.id); refresh(); }}>Archive</button>
         </div>
       </div>
       {expanded && (
-        <div style={{ marginLeft: 22, marginTop: 6, marginBottom: 4, borderLeft: '2px solid var(--border2)', paddingLeft: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="comp-log-panel" style={{ marginLeft: 22, marginTop: 6, marginBottom: 4, borderLeft: '2px solid var(--border2)', paddingLeft: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {log.map(entry => (
             <div key={entry.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', color: LOG_TYPE_COLOR[entry.type] || 'var(--text-dimmer)', flexShrink: 0, textTransform: 'uppercase' }}>
@@ -183,11 +183,11 @@ function ProgressItem({ task, entry }) {
       </div>
       <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-dim)', flex: 1 }}>{task.text}</div>
       {entry.note && (
-        <div className="comp-meta" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div className="comp-meta comp-note" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {entry.note}
         </div>
       )}
-      <div className="comp-meta" style={{ flexShrink: 0 }}>{timeStr}</div>
+      <div className="comp-meta comp-time" style={{ flexShrink: 0 }}>{timeStr}</div>
     </div>
   );
 }

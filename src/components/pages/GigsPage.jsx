@@ -177,8 +177,8 @@ function GigItem({ evt, today, refresh, categories }) {
       <div className="gig-body">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className={`gig-name${evt.done ? ' done' : ''}`}>{evt.name}</div>
-          {cat && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-gigs)', border: '1px solid var(--c-gigs)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
-          {evt.calendarIds?.taskMaster && <CalBadge couples={!!(evt.addToCouples ?? true)} />}
+          {cat && <span className="gig-tag" style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-gigs)', border: '1px solid var(--c-gigs)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
+          {evt.calendarIds?.taskMaster && <span className="gig-tag"><CalBadge couples={!!(evt.addToCouples ?? true)} /></span>}
         </div>
         <div className="gig-countdown">
           {countdown(diff)}
@@ -317,8 +317,8 @@ function MeetingItem({ mtg, today, refresh, categories }) {
       <div className="gig-body">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className={`gig-name${mtg.done ? ' done' : ''}`}>{mtg.name}</div>
-          {cat && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-inprogress)', border: '1px solid var(--c-inprogress)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
-          {mtg.calendarIds?.taskMaster && <CalBadge couples={!!(mtg.addToCouples ?? true)} />}
+          {cat && <span className="gig-tag" style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-inprogress)', border: '1px solid var(--c-inprogress)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
+          {mtg.calendarIds?.taskMaster && <span className="gig-tag"><CalBadge couples={!!(mtg.addToCouples ?? true)} /></span>}
         </div>
         <div className="gig-countdown">
           {countdown(diff)}

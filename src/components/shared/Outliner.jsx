@@ -341,29 +341,29 @@ function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, o
 
   return (
     <div ref={wrapperRef} onBlur={handleBlur} onKeyDown={e => { if (e.key === 'Escape' && expanded) { e.stopPropagation(); onToggleDetail(); } }}>
-      <div className="o-row" data-depth={depth || undefined}>
-        {depth > 0 && <span style={{ width: 14, flexShrink: 0, textAlign: 'center', fontSize: 16, lineHeight: '30px', color: 'var(--text-dimmer)', userSelect: 'none', marginLeft: -4 }}>·</span>}
+      <div className="o-row o-task-row" data-depth={depth || undefined}>
+        {depth > 0 && <span className="o-bullet" style={{ width: 14, flexShrink: 0, textAlign: 'center', fontSize: 16, lineHeight: '30px', color: 'var(--text-dimmer)', userSelect: 'none', marginLeft: -4 }}>·</span>}
         <div
           className={`o-check${task.done ? ' done' : ''}`}
           onClick={onToggleDetail}
           title="View activity log"
         />
         <div className="o-body">
-          <input
+          <textarea
             ref={inputRef}
             className={`o-input${task.done ? ' is-done' : ''}`}
             data-task-id={task.id}
             defaultValue={task.text}
             placeholder="Task..."
-            onMouseEnter={startScroll}
-            onMouseLeave={stopScroll}
-            onFocus={stopScroll}
+            rows={1}
+            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+            onFocus={e => { stopScroll(); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             onBlur={e => { stopScroll(); onTextChange(task.id, e.target.value); }}
             onKeyDown={e => {
               if (e.key === 'Backspace' && e.target.value === '') {
                 e.preventDefault();
                 onDelete(task.id);
-              } else if (e.key === 'Enter') {
+              } else if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 onTextChange(task.id, e.target.value);
                 onEnter(task.id, task.categoryId || null);

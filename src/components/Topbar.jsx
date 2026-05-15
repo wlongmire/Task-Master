@@ -92,11 +92,11 @@ export default function Topbar({ viewDay, tick }) {
   return (
     <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
       {/* Row 1: greeting + time + task widgets */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '9px 28px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="topbar-row" style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '9px 28px', borderBottom: '1px solid var(--border)' }}>
+        <div className="topbar-greeting" style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ color: 'var(--c-todo)' }}>Good {period}, {NAME}</span>
           <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>— {dateLabel}</span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', fontWeight: 400, letterSpacing: '0.04em' }}>{timeStr}</span>
+          <span className="topbar-time" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', fontWeight: 400, letterSpacing: '0.04em' }}>{timeStr}</span>
           {viewDay < today && (
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--c-todo)', border: '1px solid var(--c-todo)', borderRadius: 3, padding: '1px 6px', opacity: 0.7 }}>viewing past</span>
           )}
@@ -131,7 +131,7 @@ export default function Topbar({ viewDay, tick }) {
       </div>
 
       {/* Row 2: quote + counts */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 22, padding: '9px 28px' }}>
+      <div className="topbar-row" style={{ display: 'flex', alignItems: 'center', gap: 22, padding: '9px 28px' }}>
         <div className="hide-mobile" style={{ fontFamily: 'var(--font-nb)', fontStyle: 'italic', fontSize: 13, color: 'var(--text-dim)', flex: 1, display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0, overflow: 'hidden' }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{quote.text}"</span>
           <span style={{ fontFamily: 'var(--font-mono)', fontStyle: 'normal', fontSize: 9, letterSpacing: '0.06em', color: 'var(--text-dimmer)', flexShrink: 0 }}>— {quote.author}</span>
@@ -152,20 +152,16 @@ export default function Topbar({ viewDay, tick }) {
             dot={nextMeeting ? Math.round((new Date(nextMeeting.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) <= 2 : false}
           />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
-          <span className="hide-xsmall" style={{ display: 'contents' }}>
-            <Stat num={stats.created}          label="Created"   cls="created" />
-            <StatDivider />
-          </span>
-          <Stat num={stats.partial}          label="Partial"   cls="inprogress" />
+        <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+          <Stat num={stats.created}           label="Created"  cls="created" />
           <StatDivider />
-          <Stat num={stats.done}             label="Done"      cls="completed" />
-          <div className="hide-mobile" style={{ display: 'contents' }}>
-            <StatDivider />
-            <Stat num={stats.gigsCompleted}    label="Gigs"      cls="gigs" />
-            <StatDivider />
-            <Stat num={stats.meetingsCompleted} label="Meetings" cls="meetings" />
-          </div>
+          <Stat num={stats.partial}           label="Partial"  cls="inprogress" />
+          <StatDivider />
+          <Stat num={stats.done}              label="Done"     cls="completed" />
+          <StatDivider />
+          <Stat num={stats.gigsCompleted}     label="Gigs"     cls="gigs" />
+          <StatDivider />
+          <Stat num={stats.meetingsCompleted} label="Meetings" cls="meetings" />
         </div>
       </div>
     </header>
@@ -216,7 +212,7 @@ function TaskWidget({ label, name, sub, color, dot }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, maxWidth: 160 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         {dot && <div style={{ width: 5, height: 5, borderRadius: '50%', background: color, boxShadow: `0 0 0 2px ${color}44`, flexShrink: 0 }} />}
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dimmer)' }}>{label}</span>
+        <span className="tw-label" style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dimmer)' }}>{label}</span>
       </div>
       {name ? (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
@@ -226,7 +222,7 @@ function TaskWidget({ label, name, sub, color, dot }) {
             onMouseLeave={stopScroll}
             style={{ overflow: 'hidden', maxWidth: 110, flexShrink: 0 }}
           >
-            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', display: 'block' }}>
+            <span className="tw-name" style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', display: 'block' }}>
               {name}
             </span>
           </div>
