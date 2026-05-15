@@ -464,6 +464,8 @@ html, body {
   .o-log-note { display: none !important; }
   .o-act { font-size: 11px !important; padding: 5px 10px !important; }
   .o-act-details { font-size: 12px !important; padding: 6px 14px !important; font-weight: 600 !important; color: var(--text) !important; border-color: var(--border2) !important; }
+  .o-act-delete { color: #c0504040 !important; border-color: #c0504040 !important; margin-left: auto; }
+  .o-act-delete:hover { color: #e05050 !important; border-color: #e05050 !important; background: none !important; }
   .o-add { padding: 10px 7px !important; }
 
   .comp-check { display: block !important; }

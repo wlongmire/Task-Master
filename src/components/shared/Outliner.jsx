@@ -567,6 +567,7 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
                 {listState === 'inprogress' && <><button className="o-act progress" onMouseDown={e => e.preventDefault()} onClick={() => onAction('log-progress', task.id)}>◐ Progress</button><button className="o-act done-btn" onMouseDown={e => e.preventDefault()} onClick={() => onAction('done', task.id)}>✓ Done</button><button className="o-act" onMouseDown={e => e.preventDefault()} onClick={() => onAction('back', task.id)}>← Back</button></>}
                 {listState === 'backlog' && <button className="o-act done-btn" onMouseDown={e => e.preventDefault()} onClick={() => onAction('done', task.id)}>✓ Done</button>}
                 <button className="o-act o-act-details" onMouseDown={e => e.preventDefault()} onClick={() => setDetailModal(true)}>Details</button>
+                <button className="o-act o-act-delete" onMouseDown={e => e.preventDefault()} onClick={() => onDelete(task.id)}>✕ Delete</button>
               </>
             ) : (
               <>
