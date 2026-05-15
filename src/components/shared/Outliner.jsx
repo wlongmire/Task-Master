@@ -552,7 +552,6 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
               else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); onArrow(task.id, e.key === 'ArrowUp' ? 'up' : 'down'); }
             }}
           />
-          {lastLog?.note && !expanded && <div className="o-log-note">{lastLog.note}</div>}
           {task.dueDate && (
             <div className="o-meta" style={{ color: task.dueDate < todayKey() ? 'var(--c-todo)' : 'var(--text-dimmer)' }}>
               Due {new Date(task.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -580,6 +579,7 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
               </>
             )}
           </div>
+        {lastLog?.note && !expanded && <div className="o-log-note o-log-note-row">{lastLog.note}</div>}
       </div>
 
       {!isMobile && expanded && <DetailPanel task={task} onAction={onAction} />}
