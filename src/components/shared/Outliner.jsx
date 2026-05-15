@@ -546,8 +546,8 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
             placeholder="Task..."
             rows={1}
             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            onFocus={e => { stopScroll(); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            onBlur={e => { stopScroll(); onTextChange(task.id, e.target.value); }}
+            onFocus={e => { stopScroll(); e.target.style.whiteSpace = 'normal'; e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+            onBlur={e => { stopScroll(); e.target.style.whiteSpace = 'nowrap'; e.target.style.height = ''; onTextChange(task.id, e.target.value); }}
             onKeyDown={e => {
               if (e.key === 'Backspace' && e.target.value === '') { e.preventDefault(); onDelete(task.id); }
               else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onTextChange(task.id, e.target.value); onEnter(task.id, task.categoryId || null); }

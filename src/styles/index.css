@@ -192,7 +192,7 @@ html, body {
 .o-input {
   width: 100%; background: transparent; border: none; outline: none;
   font-family: var(--font-ui); font-size: 14px; color: var(--text); line-height: 1.5;
-  resize: none; overflow: hidden;
+  resize: none; overflow: hidden; white-space: nowrap;
 }
 .o-input::placeholder { color: var(--text-dimmer); }
 .o-input.is-cat { font-weight: 700; font-size: 13px; }
