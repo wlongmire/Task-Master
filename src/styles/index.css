@@ -439,13 +439,23 @@ html, body {
   .hide-mobile { display: none !important; }
   .show-mobile { display: flex !important; }
 
+  .o-row:hover,
+  .o-act:hover,
+  .comp-item:hover,
+  .comp-act:hover,
+  .gig-item:hover,
+  .o-add:hover { background: none !important; color: inherit; border-color: inherit; opacity: inherit; }
+
   .o-task-row { flex-wrap: wrap; }
   .o-task-row .o-body { flex-basis: 100%; }
   .o-check { display: none !important; }
   .o-bullet { display: none !important; }
-  .o-body { padding: 2px 4px 2px 5px; }
+  .o-body { padding: 6px 4px 4px 5px; }
   .o-input { font-size: 17px !important; }
   .o-log-note { display: none !important; }
+  .o-act { font-size: 11px !important; padding: 5px 10px !important; }
+  .o-act-details { font-size: 12px !important; padding: 6px 14px !important; font-weight: 600 !important; color: var(--text) !important; border-color: var(--border2) !important; }
+  .o-add { padding: 10px 7px !important; }
 
   .comp-check { display: block !important; }
   .gig-tag { display: none !important; }
@@ -460,10 +470,9 @@ html, body {
   .comp-item { padding: 4px 2px !important; }
   .o-actions {
     flex-basis: 100%;
-    opacity: 1 !important;
-    padding: 2px 0 4px 22px;
+    padding: 2px 0 6px 0;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 6px;
   }
 
   header {

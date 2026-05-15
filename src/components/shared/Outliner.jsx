@@ -8,8 +8,20 @@ import {
 let _pendingFocus = null;
 export function scheduleOutlinerFocus(taskId) { _pendingFocus = taskId; }
 
+function useIsMobile() {
+  const [v, setV] = useState(() => window.innerWidth <= 700);
+  useEffect(() => {
+    const h = () => setV(window.innerWidth <= 700);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return v;
+}
+
 // listState: 'todo' | 'backlog' | 'inprogress'
 export default function Outliner({ listState, viewDay, refresh, openLogPopup, onEnd, onStart }) {
+  const isMobile = useIsMobile();
+  const [addModal, setAddModal] = useState(null); // null | { catId }
   const [collapsed, setCollapsed] = useState(() => {
     const cats = getCategories();
     const allTasks = getTasks().filter(t => !t.archived && t.state === listState);
@@ -228,6 +240,7 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
           task={task}
           listState={listState}
           depth={0}
+          isMobile={isMobile}
           expanded={expanded.has(task.id)}
           onToggleDetail={() => toggleDetail(task.id)}
           onAction={handleAction}
@@ -240,11 +253,11 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
 
       {/* Uncategorized add row */}
       <div className="o-add" tabIndex={0} data-add-cat="none"
-        onClick={() => handleNewTask(null)}
+        onClick={() => isMobile ? setAddModal({ catId: null }) : handleNewTask(null)}
         onKeyDown={e => {
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); handleAddRowArrow('none', e.key === 'ArrowUp' ? 'up' : 'down'); }
-          else if (e.key === 'Enter') { e.preventDefault(); handleNewTask(null); }
-          else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); handleNewTask(null, e.key); }
+          else if (e.key === 'Enter') { e.preventDefault(); isMobile ? setAddModal({ catId: null }) : handleNewTask(null); }
+          else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); isMobile ? setAddModal({ catId: null }) : handleNewTask(null, e.key); }
         }}>
         <div className={`o-add-plus ${listState}`}>+</div>
         <div className="o-add-label">{addLabel}</div>
@@ -275,6 +288,7 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
                   task={task}
                   listState={listState}
                   depth={1}
+                  isMobile={isMobile}
                   expanded={expanded.has(task.id)}
                   onToggleDetail={() => toggleDetail(task.id)}
                   onAction={handleAction}
@@ -285,11 +299,11 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
                 />
               ))}
               <div className="o-add" style={{ paddingLeft: 36 }} tabIndex={0} data-add-cat={cat.id}
-                onClick={() => handleNewTask(cat.id)}
+                onClick={() => isMobile ? setAddModal({ catId: cat.id }) : handleNewTask(cat.id)}
                 onKeyDown={e => {
                   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); handleAddRowArrow(cat.id, e.key === 'ArrowUp' ? 'up' : 'down'); }
-                  else if (e.key === 'Enter') { e.preventDefault(); handleNewTask(cat.id); }
-                  else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); handleNewTask(cat.id, e.key); }
+                  else if (e.key === 'Enter') { e.preventDefault(); isMobile ? setAddModal({ catId: cat.id }) : handleNewTask(cat.id); }
+                  else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); isMobile ? setAddModal({ catId: cat.id }) : handleNewTask(cat.id, e.key); }
                 }}>
                 <div className={`o-add-plus ${listState}`}>+</div>
                 <div className="o-add-label">{addLabel}</div>
@@ -298,35 +312,203 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
           )}
         </div>
       ))}
+
+      {addModal && (
+        <AddTaskModal
+          listState={listState}
+          catId={addModal.catId}
+          categories={categories}
+          onAdd={(text, catId, extras) => {
+            const newTask = addTask({ text, state: listState, categoryId: catId || null, dayKey: listState === 'todo' ? viewDay : undefined, ...extras });
+            _pendingFocus = newTask.id;
+            refresh();
+            setAddModal(null);
+          }}
+          onClose={() => setAddModal(null)}
+        />
+      )}
     </div>
   );
 }
 
-function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, onDelete, onEnter, onArrow, onTextChange }) {
+function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
+  const [text, setText]             = useState('');
+  const [description, setDesc]      = useState('');
+  const [selectedCat, setSelectedCat] = useState(catId || '');
+  const [dueDate, setDueDate]       = useState('');
+  const [urgent, setUrgent]         = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const inputRef = useRef();
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const handleSubmit = () => {
+    if (!text.trim()) return;
+    const extras = {
+      ...(description.trim() ? { description: description.trim() } : {}),
+      ...(dueDate ? { dueDate } : {}),
+      ...(urgent ? { urgent: true } : {}),
+    };
+    onAdd(text.trim(), selectedCat || null, extras);
+  };
+
+  const stateLabel = listState === 'todo' ? 'To Do' : listState === 'backlog' ? 'Backlog' : 'In Progress';
+  const accentColor = listState === 'todo' ? 'var(--c-todo)' : listState === 'backlog' ? 'var(--c-backlog)' : 'var(--c-inprogress)';
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }} />
+      <div style={{
+        position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+        width: 'calc(100% - 32px)', zIndex: 101,
+        background: 'var(--surface)', border: '1px solid var(--border2)',
+        borderRadius: 16, padding: '20px 20px 28px',
+        display: 'flex', flexDirection: 'column', gap: 12,
+        maxHeight: '85vh', overflowY: 'auto',
+      }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dimmer)' }}>
+          Add to {stateLabel}
+        </div>
+
+        {/* Task name */}
+        <textarea
+          ref={inputRef}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="What needs doing?"
+          rows={2}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } if (e.key === 'Escape') onClose(); }}
+          style={{
+            width: '100%', background: 'var(--surface2)', border: '1px solid var(--border2)',
+            borderRadius: 8, color: 'var(--text)', fontFamily: 'var(--font-ui)',
+            fontSize: 18, padding: '12px 14px', outline: 'none', resize: 'none', lineHeight: 1.5,
+          }}
+        />
+
+        {/* Topic picker */}
+        {categories.length > 0 && (
+          <select
+            value={selectedCat}
+            onChange={e => setSelectedCat(e.target.value)}
+            style={{
+              background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8,
+              color: selectedCat ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-ui)',
+              fontSize: 15, padding: '10px 14px', outline: 'none', colorScheme: 'dark', width: '100%',
+            }}
+          >
+            <option value="">No topic</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+
+        {/* Details toggle */}
+        <button
+          onClick={() => setShowDetails(d => !d)}
+          style={{
+            alignSelf: 'flex-start', fontFamily: 'var(--font-mono)', fontSize: 10,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            color: showDetails ? 'var(--text-dim)' : 'var(--text-dimmer)',
+            background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <span>{showDetails ? '▾' : '▸'}</span> Details
+        </button>
+
+        {/* Collapsible details */}
+        {showDetails && (
+          <>
+            <textarea
+              value={description}
+              onChange={e => setDesc(e.target.value)}
+              placeholder="Description (optional)..."
+              rows={2}
+              style={{
+                width: '100%', background: 'var(--surface2)', border: '1px solid var(--border2)',
+                borderRadius: 8, color: 'var(--text)', fontFamily: 'var(--font-ui)',
+                fontSize: 14, padding: '10px 14px', outline: 'none', resize: 'none', lineHeight: 1.5,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dimmer)' }}>Due date</span>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  style={{
+                    background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8,
+                    color: dueDate ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)',
+                    fontSize: 14, padding: '10px 14px', outline: 'none', colorScheme: 'dark', width: '100%',
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => setUrgent(u => !u)}
+                style={{
+                  marginTop: 18, width: 44, height: 44, borderRadius: 8, border: '1px solid',
+                  borderColor: urgent ? '#e05050' : 'var(--border2)',
+                  background: urgent ? '#e0505022' : 'var(--surface2)',
+                  color: urgent ? '#e05050' : 'var(--text-dimmer)',
+                  fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700,
+                  cursor: 'pointer', flexShrink: 0,
+                }}
+              >!</button>
+            </div>
+          </>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button onClick={onClose} style={{
+            flex: 1, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 500,
+            padding: '12px', borderRadius: 8, border: '1px solid var(--border2)',
+            background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer',
+          }}>Cancel</button>
+          <button onClick={handleSubmit} style={{
+            flex: 2, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 600,
+            padding: '12px', borderRadius: 8, border: 'none',
+            background: accentColor, color: '#000', cursor: 'pointer',
+          }}>Add Task</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function TaskRow({ task, listState, depth, isMobile, expanded, onToggleDetail, onAction, onDelete, onEnter, onArrow, onTextChange }) {
   const lastLog = task.log && task.log.length > 0 ? task.log[task.log.length - 1] : null;
-  const logCount = task.log ? task.log.length : 0;
   const wrapperRef = useRef();
   const inputRef = useRef();
   const scrollRaf = useRef();
+  const blurTimer = useRef();
+  const [tapped, setTapped] = useState(false);
+  const [detailModal, setDetailModal] = useState(false);
 
-  const handleBlur = (e) => {
-    // Close the panel if focus moves outside this entire row+panel group
-    if (expanded && !wrapperRef.current?.contains(e.relatedTarget)) {
-      onToggleDetail();
-    }
-  };
+  const handleBlur = useCallback(() => {
+    blurTimer.current = setTimeout(() => {
+      if (!wrapperRef.current?.contains(document.activeElement)) {
+        if (expanded) onToggleDetail();
+        setTapped(false);
+      }
+    }, 150);
+  }, [expanded, onToggleDetail]);
+
+  const handleFocus = useCallback(() => {
+    clearTimeout(blurTimer.current);
+    if (isMobile) setTapped(true);
+  }, [isMobile]);
 
   const startScroll = useCallback(() => {
     const el = inputRef.current;
     if (!el || document.activeElement === el) return;
     const max = el.scrollWidth - el.clientWidth;
     if (max <= 0) return;
-    const duration = 800 + max * 18; // scale with text length
+    const duration = 800 + max * 18;
     let t0 = null;
     const step = (ts) => {
       if (!t0) t0 = ts;
       const p = Math.min((ts - t0) / duration, 1);
-      // ease-in-out cubic
       const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
       el.scrollLeft = e * max;
       if (p < 1) scrollRaf.current = requestAnimationFrame(step);
@@ -339,15 +521,16 @@ function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, o
     if (inputRef.current) inputRef.current.scrollLeft = 0;
   }, []);
 
+  const showActions = !isMobile || tapped;
+
   return (
-    <div ref={wrapperRef} onBlur={handleBlur} onKeyDown={e => { if (e.key === 'Escape' && expanded) { e.stopPropagation(); onToggleDetail(); } }}>
-      <div className="o-row o-task-row" data-depth={depth || undefined}>
+    <div ref={wrapperRef} onBlur={handleBlur} onFocus={handleFocus}
+      onKeyDown={e => { if (e.key === 'Escape') { setTapped(false); if (expanded) onToggleDetail(); } }}>
+      <div className="o-row o-task-row" data-depth={depth || undefined}
+        onClick={isMobile ? () => { setTapped(true); inputRef.current?.focus(); } : undefined}
+      >
         {depth > 0 && <span className="o-bullet" style={{ width: 14, flexShrink: 0, textAlign: 'center', fontSize: 16, lineHeight: '30px', color: 'var(--text-dimmer)', userSelect: 'none', marginLeft: -4 }}>·</span>}
-        <div
-          className={`o-check${task.done ? ' done' : ''}`}
-          onClick={onToggleDetail}
-          title="View activity log"
-        />
+        <div className={`o-check${task.done ? ' done' : ''}`} onClick={e => { e.stopPropagation(); onToggleDetail(); }} title="View activity log" />
         <div className="o-body">
           <textarea
             ref={inputRef}
@@ -360,60 +543,128 @@ function TaskRow({ task, listState, depth, expanded, onToggleDetail, onAction, o
             onFocus={e => { stopScroll(); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             onBlur={e => { stopScroll(); onTextChange(task.id, e.target.value); }}
             onKeyDown={e => {
-              if (e.key === 'Backspace' && e.target.value === '') {
-                e.preventDefault();
-                onDelete(task.id);
-              } else if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                onTextChange(task.id, e.target.value);
-                onEnter(task.id, task.categoryId || null);
-              } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                e.preventDefault();
-                onArrow(task.id, e.key === 'ArrowUp' ? 'up' : 'down');
-              }
+              if (e.key === 'Backspace' && e.target.value === '') { e.preventDefault(); onDelete(task.id); }
+              else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onTextChange(task.id, e.target.value); onEnter(task.id, task.categoryId || null); }
+              else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); onArrow(task.id, e.key === 'ArrowUp' ? 'up' : 'down'); }
             }}
           />
-          {lastLog?.note && !expanded && (
-            <div className="o-log-note">{lastLog.note}</div>
-          )}
+          {lastLog?.note && !expanded && <div className="o-log-note">{lastLog.note}</div>}
           {task.dueDate && (
             <div className="o-meta" style={{ color: task.dueDate < todayKey() ? 'var(--c-todo)' : 'var(--text-dimmer)' }}>
               Due {new Date(task.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </div>
           )}
         </div>
-        <div className="o-actions">
-          {logCount > 0 && (
-            <button className="o-act log-count" onClick={onToggleDetail} title="Activity log">
-              ≡ {logCount}
-            </button>
-          )}
-          {listState === 'backlog' && (
-            <button className="o-act promote" onClick={() => onAction('promote', task.id)}>↑ To Do</button>
-          )}
-          {listState === 'todo' && (
-            <>
-              <button className="o-act start" onClick={() => onAction('start', task.id)}>▶ Start</button>
-              <button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button>
-              <button className="o-act" onClick={() => onAction('defer', task.id)}>← Back</button>
-            </>
-          )}
-          {listState === 'inprogress' && (
-            <>
-              <button className="o-act progress" onClick={() => onAction('log-progress', task.id)}>◐ Progress</button>
-              <button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button>
-              <button className="o-act" onClick={() => onAction('back', task.id)}>← Back</button>
-            </>
-          )}
-          {listState === 'backlog' && (
-            <button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button>
-          )}
-          <button className="o-act" onClick={() => onAction('archive', task.id)}>Archive</button>
-        </div>
+        {showActions && (
+          <div className="o-actions">
+            {isMobile ? (
+              <>
+                {listState === 'backlog' && <button className="o-act promote" onMouseDown={e => e.preventDefault()} onClick={() => onAction('promote', task.id)}>↑ To Do</button>}
+                {listState === 'todo' && <><button className="o-act start" onMouseDown={e => e.preventDefault()} onClick={() => onAction('start', task.id)}>▶ Start</button><button className="o-act done-btn" onMouseDown={e => e.preventDefault()} onClick={() => onAction('done', task.id)}>✓ Done</button><button className="o-act" onMouseDown={e => e.preventDefault()} onClick={() => onAction('defer', task.id)}>← Back</button></>}
+                {listState === 'inprogress' && <><button className="o-act progress" onMouseDown={e => e.preventDefault()} onClick={() => onAction('log-progress', task.id)}>◐ Progress</button><button className="o-act done-btn" onMouseDown={e => e.preventDefault()} onClick={() => onAction('done', task.id)}>✓ Done</button><button className="o-act" onMouseDown={e => e.preventDefault()} onClick={() => onAction('back', task.id)}>← Back</button></>}
+                {listState === 'backlog' && <button className="o-act done-btn" onMouseDown={e => e.preventDefault()} onClick={() => onAction('done', task.id)}>✓ Done</button>}
+                <button className="o-act o-act-details" onMouseDown={e => e.preventDefault()} onClick={() => setDetailModal(true)}>Details</button>
+              </>
+            ) : (
+              <>
+                {task.log?.length > 0 && <button className="o-act log-count" onClick={onToggleDetail} title="Activity log">≡ {task.log.length}</button>}
+                {listState === 'backlog' && <button className="o-act promote" onClick={() => onAction('promote', task.id)}>↑ To Do</button>}
+                {listState === 'todo' && <><button className="o-act start" onClick={() => onAction('start', task.id)}>▶ Start</button><button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button><button className="o-act" onClick={() => onAction('defer', task.id)}>← Back</button></>}
+                {listState === 'inprogress' && <><button className="o-act progress" onClick={() => onAction('log-progress', task.id)}>◐ Progress</button><button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button><button className="o-act" onClick={() => onAction('back', task.id)}>← Back</button></>}
+                {listState === 'backlog' && <button className="o-act done-btn" onClick={() => onAction('done', task.id)}>✓ Done</button>}
+                <button className="o-act" onClick={() => onAction('archive', task.id)}>Archive</button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
-      {expanded && <DetailPanel task={task} onAction={onAction} />}
+      {!isMobile && expanded && <DetailPanel task={task} onAction={onAction} />}
+      {detailModal && <TaskDetailModal task={task} listState={listState} onAction={onAction} onClose={() => setDetailModal(false)} />}
     </div>
+  );
+}
+
+const LOG_TYPE_LABELS = { created: 'Created', started: 'Started', progress: 'Progress', done: 'Done' };
+const LOG_TYPE_COLORS = { created: 'var(--text-dimmer)', started: 'var(--c-backlog)', progress: 'var(--c-inprogress)', done: 'var(--c-completed)' };
+
+function TaskDetailModal({ task, listState, onAction, onClose }) {
+  const [text, setText] = useState(task.text);
+  const [description, setDesc] = useState(task.description || '');
+  const [dueDate, setDueDate] = useState(task.dueDate || '');
+  const accentColor = listState === 'todo' ? 'var(--c-todo)' : listState === 'backlog' ? 'var(--c-backlog)' : 'var(--c-inprogress)';
+
+  const save = () => {
+    if (text.trim()) updateTask(task.id, { text: text.trim() });
+    updateTask(task.id, { description: description.trim() || null, dueDate: dueDate || null });
+    onClose();
+  };
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100 }} />
+      <div style={{
+        position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+        width: 'calc(100% - 32px)', zIndex: 101, maxHeight: '85vh', overflowY: 'auto',
+        background: 'var(--surface)', border: '1px solid var(--border2)',
+        borderRadius: 16, padding: '20px 20px 28px',
+        display: 'flex', flexDirection: 'column', gap: 12,
+      }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dimmer)' }}>
+          Task Details
+        </div>
+
+        {/* Name */}
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={2}
+          style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 18, padding: '12px 14px', outline: 'none', resize: 'none', lineHeight: 1.5 }} />
+
+        {/* Description */}
+        <textarea value={description} onChange={e => setDesc(e.target.value)} placeholder="Description..." rows={3}
+          style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 14, padding: '10px 14px', outline: 'none', resize: 'none', lineHeight: 1.5 }} />
+
+        {/* Due date + urgent */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dimmer)' }}>Due date</span>
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, color: dueDate ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 14, padding: '10px 14px', outline: 'none', colorScheme: 'dark', width: '100%' }} />
+          </div>
+          <button onClick={() => { onAction('toggle-urgent', task.id); }}
+            style={{ marginTop: 18, width: 44, height: 44, borderRadius: 8, border: '1px solid', borderColor: task.urgent ? '#e05050' : 'var(--border2)', background: task.urgent ? '#e0505022' : 'var(--surface2)', color: task.urgent ? '#e05050' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>!</button>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {listState === 'backlog' && <button className="o-act promote" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('promote', task.id); onClose(); }}>↑ To Do</button>}
+          {listState === 'todo' && <><button className="o-act start" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('start', task.id); onClose(); }}>▶ Start</button><button className="o-act done-btn" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('done', task.id); onClose(); }}>✓ Done</button><button className="o-act" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('defer', task.id); onClose(); }}>← Back</button></>}
+          {listState === 'inprogress' && <><button className="o-act progress" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('log-progress', task.id); onClose(); }}>◐ Progress</button><button className="o-act done-btn" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('done', task.id); onClose(); }}>✓ Done</button><button className="o-act" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('back', task.id); onClose(); }}>← Back</button></>}
+          {listState === 'backlog' && <button className="o-act done-btn" style={{ fontSize: 13, padding: '8px 14px' }} onClick={() => { onAction('done', task.id); onClose(); }}>✓ Done</button>}
+          <button className="o-act" style={{ fontSize: 13, padding: '8px 14px', marginLeft: 'auto', color: '#7a3030', borderColor: '#7a3030' }} onClick={() => { onAction('archive', task.id); onClose(); }}>Archive</button>
+        </div>
+
+        {/* Activity log */}
+        {task.log?.length > 0 && (
+          <>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dimmer)', marginTop: 4, borderTop: '1px solid var(--border)', paddingTop: 12 }}>Activity</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[...task.log].reverse().map(entry => (
+                <div key={entry.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: LOG_TYPE_COLORS[entry.type] || 'var(--text-dimmer)', flexShrink: 0 }}>{LOG_TYPE_LABELS[entry.type] || entry.type}</span>
+                  {entry.note && <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-dim)', flex: 1 }}>{entry.note}</span>}
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dimmer)', flexShrink: 0 }}>{new Date(entry.loggedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Save / close */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button onClick={onClose} style={{ flex: 1, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 500, padding: '12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={save} style={{ flex: 2, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 600, padding: '12px', borderRadius: 8, border: 'none', background: accentColor, color: '#000', cursor: 'pointer' }}>Save</button>
+        </div>
+      </div>
+    </>
   );
 }
 
