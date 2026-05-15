@@ -78,8 +78,8 @@ export default function Topbar({ viewDay, tick }) {
   }, [tick]);
 
   const nextMeeting = useMemo(() => {
-    const meetings = getMeetings().filter(m => !m.archived && !m.done && m.date >= today);
-    return meetings.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))[0] || null;
+    const meetings = getMeetings().filter(m => !m.archived && !m.done && m.date === today);
+    return meetings.sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0] || null;
   }, [tick]);
 
   const quote = getDailyQuote();
