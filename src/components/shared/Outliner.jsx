@@ -9,9 +9,9 @@ let _pendingFocus = null;
 export function scheduleOutlinerFocus(taskId) { _pendingFocus = taskId; }
 
 function useIsMobile() {
-  const [v, setV] = useState(() => window.innerWidth <= 700);
+  const [v, setV] = useState(() => window.innerWidth <= 600);
   useEffect(() => {
-    const h = () => setV(window.innerWidth <= 700);
+    const h = () => setV(window.innerWidth <= 600);
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, []);

@@ -21,9 +21,9 @@ const PAGE_META = {
 };
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 700);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
   useEffect(() => {
-    const h = () => setIsMobile(window.innerWidth <= 700);
+    const h = () => setIsMobile(window.innerWidth <= 600);
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, []);
