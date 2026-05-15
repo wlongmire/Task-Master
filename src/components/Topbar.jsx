@@ -158,10 +158,12 @@ export default function Topbar({ viewDay, tick }) {
           <Stat num={stats.partial}          label="Partial"   cls="inprogress" />
           <StatDivider />
           <Stat num={stats.done}             label="Done"      cls="completed" />
-          <StatDivider />
-          <Stat num={stats.gigsCompleted}    label="Gigs"      cls="gigs" />
-          <StatDivider />
-          <Stat num={stats.meetingsCompleted} label="Meetings" cls="meetings" />
+          <div className="hide-mobile" style={{ display: 'contents' }}>
+            <StatDivider />
+            <Stat num={stats.gigsCompleted}    label="Gigs"      cls="gigs" />
+            <StatDivider />
+            <Stat num={stats.meetingsCompleted} label="Meetings" cls="meetings" />
+          </div>
         </div>
       </div>
     </header>
