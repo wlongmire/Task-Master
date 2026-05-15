@@ -519,7 +519,10 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
   const showActions = !isMobile || isActive;
 
   return (
-    <div ref={wrapperRef} onKeyDown={e => { if (e.key === 'Escape' && expanded) onToggleDetail(); }}>
+    <div ref={wrapperRef}
+      onFocus={isMobile ? onActivate : undefined}
+      onKeyDown={e => { if (e.key === 'Escape' && expanded) onToggleDetail(); }}
+    >
       <div className="o-row o-task-row" data-depth={depth || undefined}
         onPointerDown={isMobile ? () => { onActivate(); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
       >
