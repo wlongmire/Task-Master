@@ -459,11 +459,12 @@ html, body {
   .o-task-row .o-body { flex-basis: 100%; }
   .o-check { display: none !important; }
   .o-bullet { display: none !important; }
-  .o-body { padding: 6px 4px 4px 5px; }
+  .outliner { padding-left: 10px !important; padding-right: 10px !important; }
+  .o-body { padding: 6px 2px 4px 2px; }
   .o-input { font-size: 17px !important; }
   .o-log-note { display: none !important; }
-  .o-act { font-size: 11px !important; padding: 5px 10px !important; }
-  .o-act-details { font-size: 12px !important; padding: 6px 14px !important; font-weight: 600 !important; color: var(--text) !important; border-color: var(--border2) !important; }
+  .o-act { font-size: 12px !important; padding: 7px 13px !important; }
+  .o-act-details { font-size: 13px !important; padding: 8px 16px !important; font-weight: 600 !important; color: var(--text) !important; border-color: var(--border2) !important; }
   .o-act-delete { color: #c0504040 !important; border-color: #c0504040 !important; margin-left: auto; }
   .o-act-delete:hover { color: #e05050 !important; border-color: #e05050 !important; background: none !important; }
   .o-add { padding: 10px 7px !important; }
