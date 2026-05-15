@@ -20,9 +20,20 @@ const PAGE_META = {
   gigs:   { title: 'Gigs & Meetings', archiveTab: 'events',   subtitle: '· upcoming · sorted by date' },
 };
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 700);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 700);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return isMobile;
+}
+
 export default function App() {
   const [user,    setUser]    = useState(undefined); // undefined = checking auth
   const [dbReady, setDbReady] = useState(false);
+  const isMobile = useIsMobile();
 
   const [page,       setPage]       = useState('daily');
   const [viewDay,    setViewDay]    = useState(todayKey());
@@ -118,10 +129,21 @@ export default function App() {
           </div>
         </div>
         <div className="page-area">
-          {page === 'daily'  && <DailyPage  {...pageProps} />}
-          {page === 'todo'   && <TodoPage   {...pageProps} onPageEnd={() => { focusFirstTask('inprogress'); setPage('active'); }} onPageStart={() => setPage('daily')} />}
-          {page === 'active' && <ActivePage {...pageProps} onPageEnd={() => setPage('gigs')} onPageStart={() => { focusLastTask('todo'); setPage('todo'); }} />}
-          {page === 'gigs'   && <GigsPage   {...pageProps} />}
+          {isMobile ? (
+            <>
+              <div id="section-daily">  <DailyPage  {...pageProps} /></div>
+              <div id="section-todo"  className="mobile-section-divider"><div className="mobile-section-label">To Do</div><TodoPage   {...pageProps} /></div>
+              <div id="section-active" className="mobile-section-divider"><div className="mobile-section-label">Active</div><ActivePage {...pageProps} /></div>
+              <div id="section-gigs"   className="mobile-section-divider"><div className="mobile-section-label">Gigs &amp; Meetings</div><GigsPage {...pageProps} /></div>
+            </>
+          ) : (
+            <>
+              {page === 'daily'  && <DailyPage  {...pageProps} />}
+              {page === 'todo'   && <TodoPage   {...pageProps} onPageEnd={() => { focusFirstTask('inprogress'); setPage('active'); }} onPageStart={() => setPage('daily')} />}
+              {page === 'active' && <ActivePage {...pageProps} onPageEnd={() => setPage('gigs')} onPageStart={() => { focusLastTask('todo'); setPage('todo'); }} />}
+              {page === 'gigs'   && <GigsPage   {...pageProps} />}
+            </>
+          )}
         </div>
       </main>
       <ArchiveOverlay open={archiveOpen} tab={archiveTab} setTab={setArchiveTab} onClose={() => setArchiveOpen(false)} tick={tick} />

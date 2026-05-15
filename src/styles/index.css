@@ -433,7 +433,11 @@ html, body {
 @media (max-width: 700px) {
   :root { --sidebar-w: 220px; }
   .main { margin-left: 0; }
-  .page { padding: 16px 16px 60px; }
+  .page { padding: 16px 16px 40px; }
+
+  .app { overflow: auto; height: auto; }
+  .main { height: auto; overflow: visible; }
+  .page-area { overflow: visible; height: auto; }
 
   aside {
     transform: translateX(-100%);
@@ -447,6 +451,19 @@ html, body {
   }
   .mobile-menu-btn {
     display: inline-flex !important;
+  }
+
+  .mobile-section-divider {
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .mobile-section-label {
+    font-family: var(--font-ui);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    padding: 16px 16px 4px;
   }
 }
 

@@ -121,7 +121,15 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
           color={p.color}
           active={page === p.id}
           count={pageCounts[p.id]}
-          onClick={() => { setPage(p.id); onMobileClose?.(); }}
+          onClick={() => {
+            const section = document.getElementById(`section-${p.id}`);
+            if (section) {
+              section.scrollIntoView({ behavior: 'smooth' });
+            } else {
+              setPage(p.id);
+            }
+            onMobileClose?.();
+          }}
         />
       ))}
 
