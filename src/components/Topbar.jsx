@@ -111,14 +111,16 @@ export default function Topbar({ viewDay, tick }) {
             sub={stats.nextDeadline ? dueSub(stats.nextDeadline.dueDate, today) : null}
             color="var(--c-todo)"
           />
-          <StatDivider />
-          <TaskWidget
-            label="Next Gig"
-            name={nextGig?.name}
-            sub={nextGig ? dueSub(nextGig.date, today) : null}
-            color="var(--c-gigs)"
-            dot={nextGig ? Math.round((new Date(nextGig.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) <= 2 : false}
-          />
+          <div className="hide-mobile" style={{ display: 'contents' }}>
+            <StatDivider />
+            <TaskWidget
+              label="Next Gig"
+              name={nextGig?.name}
+              sub={nextGig ? dueSub(nextGig.date, today) : null}
+              color="var(--c-gigs)"
+              dot={nextGig ? Math.round((new Date(nextGig.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) <= 2 : false}
+            />
+          </div>
           <StatDivider />
           <TaskWidget
             label="Next Meeting"
