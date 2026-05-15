@@ -65,14 +65,15 @@ export default function GigsPage({ refresh, tick, openArchive }) {
 function GigsList({ gigs, today, refresh, adding, setAdding, categories }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [addToCouples, setAddToCouples] = useState(true);
 
   const handleAdd = () => {
     if (!name.trim() || !date) return;
-    const evt = addEvent({ name: name.trim(), date, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples });
-    setName(''); setDate(''); setNotes(''); setCategoryId(''); setAddToCouples(true); setAdding(false);
+    const evt = addEvent({ name: name.trim(), date, time: time || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples });
+    setName(''); setDate(''); setTime(''); setNotes(''); setCategoryId(''); setAddToCouples(true); setAdding(false);
     refresh();
     pushToCalendar(evt, addToCouples, updates => updateEvent(evt.id, updates));
   };
@@ -84,6 +85,7 @@ function GigsList({ gigs, today, refresh, adding, setAdding, categories }) {
           namePlaceholder="Gig name..."
           date={date} setDate={setDate}
           name={name} setName={setName}
+          time={time} setTime={setTime}
           notes={notes} setNotes={setNotes}
           categoryId={categoryId} setCategoryId={setCategoryId}
           categories={categories}
@@ -107,17 +109,19 @@ function GigItem({ evt, today, refresh, categories }) {
   const [editing, setEditing] = useState(false);
   const [name, setName]       = useState(evt.name);
   const [date, setDate]       = useState(evt.date);
+  const [time, setTime]       = useState(evt.time || '');
   const [notes, setNotes]     = useState(evt.notes || '');
   const [categoryId, setCategoryId] = useState(evt.categoryId || '');
   const [addToCouples, setAddToCouples] = useState(evt.addToCouples ?? true);
 
-  const diff = daysUntil(evt.date, today);
-  const d    = new Date(evt.date + 'T00:00:00');
-  const cat  = evt.categoryId ? (categories || []).find(c => c.id === evt.categoryId) : null;
+  const diff    = daysUntil(evt.date, today);
+  const d       = new Date(evt.date + 'T00:00:00');
+  const timeStr = evt.time ? new Date(`1970-01-01T${evt.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+  const cat     = evt.categoryId ? (categories || []).find(c => c.id === evt.categoryId) : null;
 
   const handleSave = () => {
     if (!name.trim() || !date) return;
-    const updates = { name: name.trim(), date, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples };
+    const updates = { name: name.trim(), date, time: time || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples };
     updateEvent(evt.id, updates);
     setEditing(false);
     refresh();
@@ -140,6 +144,8 @@ function GigItem({ evt, today, refresh, categories }) {
             style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }} />
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
+          <input type="time" value={time} onChange={e => setTime(e.target.value)}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: time ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input placeholder="Notes (optional)..." value={notes} onChange={e => setNotes(e.target.value)}
@@ -174,11 +180,14 @@ function GigItem({ evt, today, refresh, categories }) {
           {cat && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-gigs)', border: '1px solid var(--c-gigs)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
           {evt.calendarIds?.taskMaster && <CalBadge couples={!!(evt.addToCouples ?? true)} />}
         </div>
-        <div className="gig-countdown">{countdown(diff)}</div>
+        <div className="gig-countdown">
+          {countdown(diff)}
+          {timeStr && <span style={{ color: 'var(--text-dimmer)', marginLeft: 6 }}>· {timeStr}</span>}
+        </div>
         {evt.notes && <div className="gig-notes">{evt.notes}</div>}
       </div>
       <div className="gig-actions">
-        <button className="o-act" onClick={() => { setName(evt.name); setDate(evt.date); setNotes(evt.notes || ''); setCategoryId(evt.categoryId || ''); setAddToCouples(evt.addToCouples ?? true); setEditing(true); }}>Edit</button>
+        <button className="o-act" onClick={() => { setName(evt.name); setDate(evt.date); setTime(evt.time || ''); setNotes(evt.notes || ''); setCategoryId(evt.categoryId || ''); setAddToCouples(evt.addToCouples ?? true); setEditing(true); }}>Edit</button>
         <button className="o-act" onClick={() => { archiveEvent(evt.id); refresh(); }}>Archive</button>
       </div>
       <div className={`gig-check${evt.done ? ' done' : ''}`} onClick={() => { updateEvent(evt.id, { done: !evt.done }); refresh(); }} />
