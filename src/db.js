@@ -318,14 +318,17 @@ export function importData(file) {
         const data = JSON.parse(e.target.result);
         if (typeof data !== 'object' || !data) throw new Error('Invalid file format');
 
+        // Firestore rejects undefined values — strip them out
+        const clean = (obj) => JSON.parse(JSON.stringify(obj, (_, v) => v === undefined ? null : v));
+
         const ops = [];
-        (data.tasks      || []).forEach(t => ops.push([_userDoc('tasks',      t.id), { ...t, sortOrder: t.sortOrder ?? t.dateCreated ?? Date.now() }]));
-        (data.events     || []).forEach(t => ops.push([_userDoc('events',     t.id), t]));
-        (data.meetings   || []).forEach(t => ops.push([_userDoc('meetings',   t.id), t]));
-        (data.categories || []).forEach(t => ops.push([_userDoc('categories', t.id), t]));
-        Object.entries(data.grateful   || {}).forEach(([dk, v]) => ops.push([_userDoc('grateful',   dk), v]));
-        Object.entries(data.intentions || {}).forEach(([dk, v]) => ops.push([_userDoc('intentions', dk), v]));
-        Object.entries(data.briefings  || {}).forEach(([dk, v]) => ops.push([_userDoc('briefings',  dk), v]));
+        (data.tasks      || []).forEach(t => ops.push([_userDoc('tasks',      t.id), clean({ ...t, sortOrder: t.sortOrder ?? t.dateCreated ?? Date.now() })]));
+        (data.events     || []).forEach(t => ops.push([_userDoc('events',     t.id), clean(t)]));
+        (data.meetings   || []).forEach(t => ops.push([_userDoc('meetings',   t.id), clean(t)]));
+        (data.categories || []).forEach(t => ops.push([_userDoc('categories', t.id), clean(t)]));
+        Object.entries(data.grateful   || {}).forEach(([dk, v]) => ops.push([_userDoc('grateful',   dk), clean(v)]));
+        Object.entries(data.intentions || {}).forEach(([dk, v]) => ops.push([_userDoc('intentions', dk), clean(v)]));
+        Object.entries(data.briefings  || {}).forEach(([dk, v]) => ops.push([_userDoc('briefings',  dk), clean(v)]));
 
         // Commit in chunks of 490 (Firestore limit is 500 per batch)
         while (ops.length) {
@@ -334,6 +337,7 @@ export function importData(file) {
           chunk.forEach(([ref, val]) => b.set(ref, val));
           await b.commit();
         }
+        _refreshFn?.();
         resolve();
       } catch (err) {
         reject(new Error('Import failed: ' + err.message));
