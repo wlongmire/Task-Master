@@ -66,10 +66,9 @@ export default function Topbar({ viewDay, tick }) {
       .filter(t => t.dueDate)
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] || null;
 
-    const gigsCompleted    = getEvents().filter(e => e.done).length;
-    const meetingsCompleted = getMeetings().filter(m => m.done).length;
+    const meetingsCompleted = getMeetings().filter(m => m.done && m.date === today).length;
 
-    return { created, partial, done, nextDeadline, gigsCompleted, meetingsCompleted };
+    return { created, partial, done, nextDeadline, meetingsCompleted };
   }, [tick, viewDay]);
 
   const nextGig = useMemo(() => {
@@ -158,8 +157,6 @@ export default function Topbar({ viewDay, tick }) {
           <Stat num={stats.partial}           label="Partial"  cls="inprogress" />
           <StatDivider />
           <Stat num={stats.done}              label="Done"     cls="completed" />
-          <StatDivider />
-          <Stat num={stats.gigsCompleted}     label="Gigs"     cls="gigs" />
           <StatDivider />
           <Stat num={stats.meetingsCompleted} label="Meetings" cls="meetings" />
         </div>
