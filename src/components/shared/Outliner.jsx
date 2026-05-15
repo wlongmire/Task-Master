@@ -579,7 +579,12 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
               </>
             )}
           </div>
-        {lastLog?.note && !expanded && <div className="o-log-note o-log-note-row">{lastLog.note}</div>}
+        {lastLog?.note && !expanded && (
+          <div className="o-log-note-row">
+            <span className="o-log-note-spacer" />
+            <span className="o-log-note">{lastLog.note}</span>
+          </div>
+        )}
       </div>
 
       {!isMobile && expanded && <DetailPanel task={task} onAction={onAction} />}
