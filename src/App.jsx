@@ -147,10 +147,10 @@ export default function App() {
         <div className="page-area">
           {isMobile ? (
             <>
-              <div id="section-daily">  <DailyPage  {...pageProps} /></div>
-              <div id="section-todo"  className="mobile-section-divider"><div className="mobile-section-label">To Do</div><TodoPage   {...pageProps} /></div>
-              <div id="section-active" className="mobile-section-divider"><div className="mobile-section-label">Active</div><ActivePage {...pageProps} /></div>
-              <div id="section-gigs"   className="mobile-section-divider"><div className="mobile-section-label">Gigs &amp; Meetings</div><GigsPage {...pageProps} /></div>
+              <div id="section-daily"><DailyPage  {...pageProps} /></div>
+              <div id="section-todo"><TodoPage   {...pageProps} /></div>
+              <div id="section-active"><ActivePage {...pageProps} /></div>
+              <div id="section-gigs"><GigsPage {...pageProps} /></div>
             </>
           ) : (
             <>

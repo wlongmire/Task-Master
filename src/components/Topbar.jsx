@@ -153,8 +153,10 @@ export default function Topbar({ viewDay, tick }) {
           />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
-          <Stat num={stats.created}          label="Created"   cls="created" />
-          <StatDivider />
+          <span className="hide-xsmall" style={{ display: 'contents' }}>
+            <Stat num={stats.created}          label="Created"   cls="created" />
+            <StatDivider />
+          </span>
           <Stat num={stats.partial}          label="Partial"   cls="inprogress" />
           <StatDivider />
           <Stat num={stats.done}             label="Done"      cls="completed" />
