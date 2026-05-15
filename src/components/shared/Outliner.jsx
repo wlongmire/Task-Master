@@ -21,7 +21,9 @@ function useIsMobile() {
 // listState: 'todo' | 'backlog' | 'inprogress'
 export default function Outliner({ listState, viewDay, refresh, openLogPopup, onEnd, onStart }) {
   const isMobile = useIsMobile();
-  const [addModal, setAddModal] = useState(null); // null | { catId }
+  const [addModal, setAddModal]   = useState(null);
+  const [activeTaskId, setActiveTaskId] = useState(null); // mobile tap-to-reveal
+  const outlinerBlurTimer = useRef();
   const [collapsed, setCollapsed] = useState(() => {
     const cats = getCategories();
     const allTasks = getTasks().filter(t => !t.archived && t.state === listState);
@@ -231,8 +233,15 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
 
   const addLabel = listState === 'todo' ? 'Add task...' : listState === 'backlog' ? 'Add to backlog...' : 'Start something...';
 
+  const handleOutlinerBlur = () => {
+    outlinerBlurTimer.current = setTimeout(() => {
+      if (!containerRef.current?.contains(document.activeElement)) setActiveTaskId(null);
+    }, 150);
+  };
+  const handleOutlinerFocus = () => clearTimeout(outlinerBlurTimer.current);
+
   return (
-    <div className="outliner" ref={containerRef}>
+    <div className="outliner" ref={containerRef} onBlur={handleOutlinerBlur} onFocus={handleOutlinerFocus}>
       {/* Uncategorized tasks */}
       {uncategorized.map(task => (
         <TaskRow
@@ -241,6 +250,8 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
           listState={listState}
           depth={0}
           isMobile={isMobile}
+          isActive={activeTaskId === task.id}
+          onActivate={() => setActiveTaskId(task.id)}
           expanded={expanded.has(task.id)}
           onToggleDetail={() => toggleDetail(task.id)}
           onAction={handleAction}
@@ -476,28 +487,12 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
   );
 }
 
-function TaskRow({ task, listState, depth, isMobile, expanded, onToggleDetail, onAction, onDelete, onEnter, onArrow, onTextChange }) {
+function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expanded, onToggleDetail, onAction, onDelete, onEnter, onArrow, onTextChange }) {
   const lastLog = task.log && task.log.length > 0 ? task.log[task.log.length - 1] : null;
   const wrapperRef = useRef();
   const inputRef = useRef();
   const scrollRaf = useRef();
-  const blurTimer = useRef();
-  const [tapped, setTapped] = useState(false);
   const [detailModal, setDetailModal] = useState(false);
-
-  const handleBlur = useCallback(() => {
-    blurTimer.current = setTimeout(() => {
-      if (!wrapperRef.current?.contains(document.activeElement)) {
-        if (expanded) onToggleDetail();
-        setTapped(false);
-      }
-    }, 150);
-  }, [expanded, onToggleDetail]);
-
-  const handleFocus = useCallback(() => {
-    clearTimeout(blurTimer.current);
-    if (isMobile) setTapped(true);
-  }, [isMobile]);
 
   const startScroll = useCallback(() => {
     const el = inputRef.current;
@@ -521,13 +516,12 @@ function TaskRow({ task, listState, depth, isMobile, expanded, onToggleDetail, o
     if (inputRef.current) inputRef.current.scrollLeft = 0;
   }, []);
 
-  const showActions = !isMobile || tapped;
+  const showActions = !isMobile || isActive;
 
   return (
-    <div ref={wrapperRef} onBlur={handleBlur} onFocus={handleFocus}
-      onKeyDown={e => { if (e.key === 'Escape') { setTapped(false); if (expanded) onToggleDetail(); } }}>
+    <div ref={wrapperRef} onKeyDown={e => { if (e.key === 'Escape' && expanded) onToggleDetail(); }}>
       <div className="o-row o-task-row" data-depth={depth || undefined}
-        onClick={isMobile ? () => { setTapped(true); inputRef.current?.focus(); } : undefined}
+        onPointerDown={isMobile ? () => { onActivate(); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
       >
         {depth > 0 && <span className="o-bullet" style={{ width: 14, flexShrink: 0, textAlign: 'center', fontSize: 16, lineHeight: '30px', color: 'var(--text-dimmer)', userSelect: 'none', marginLeft: -4 }}>·</span>}
         <div className={`o-check${task.done ? ' done' : ''}`} onClick={e => { e.stopPropagation(); onToggleDetail(); }} title="View activity log" />
