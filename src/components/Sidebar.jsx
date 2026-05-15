@@ -128,9 +128,10 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
           >+</button>
         </div>
         {topics.map(topic => (
-          <div key={topic.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px' }}
+          <div key={topic.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 16px', borderLeft: '2px solid transparent' }}
             onMouseEnter={e => e.currentTarget.querySelector('.topic-del').style.opacity = '1'}
             onMouseLeave={e => e.currentTarget.querySelector('.topic-del').style.opacity = '0'}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: topic.color || '#44423e' }} />
             {editingTopic === topic.id ? (
               <input
                 autoFocus
