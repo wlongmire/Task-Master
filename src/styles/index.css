@@ -202,7 +202,7 @@ html, body {
 .o-input.is-done { color: var(--text-dimmer); text-decoration: line-through; }
 .o-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-dimmer); margin-top: 1px; }
 .o-log-note { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; font-style: italic; }
-.o-log-note-row { flex-basis: 100%; padding: 0 6px 5px 22px; margin-top: 0; }
+.o-log-note-row { flex-basis: 100%; padding: 0 6px 5px 21px; margin-top: 0; }
 
 .o-actions {
   display: flex; gap: 3px; align-items: center;
