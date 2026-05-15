@@ -66,9 +66,9 @@ export default function Topbar({ viewDay, tick }) {
       .filter(t => t.dueDate)
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] || null;
 
-    const meetingsCompleted = getMeetings().filter(m => m.done && m.date === today).length;
+    const meetingsAhead = getMeetings().filter(m => !m.archived && !m.done && m.date === today).length;
 
-    return { created, partial, done, nextDeadline, meetingsCompleted };
+    return { created, partial, done, nextDeadline, meetingsAhead };
   }, [tick, viewDay]);
 
   const nextGig = useMemo(() => {
@@ -77,8 +77,8 @@ export default function Topbar({ viewDay, tick }) {
   }, [tick]);
 
   const nextMeeting = useMemo(() => {
-    const meetings = getMeetings().filter(m => !m.archived && !m.done && m.date === today);
-    return meetings.sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0] || null;
+    const meetings = getMeetings().filter(m => !m.archived && !m.done && m.date >= today);
+    return meetings.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))[0] || null;
   }, [tick]);
 
   const quote = getDailyQuote();
@@ -158,7 +158,7 @@ export default function Topbar({ viewDay, tick }) {
           <StatDivider />
           <Stat num={stats.done}              label="Done"     cls="completed" />
           <StatDivider />
-          <Stat num={stats.meetingsCompleted} label="Meetings" cls="meetings" />
+          <Stat num={stats.meetingsAhead} label="Meetings" cls="meetings" />
         </div>
       </div>
     </header>
