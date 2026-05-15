@@ -41,14 +41,14 @@ export default function GigsPage({ refresh, tick, openArchive }) {
   return (
     <div className="page">
       <div className="page-grid">
-        <section className="section">
+        <section className="section" id="section-gigs-list">
           <div className="section-hd">
             <span className="section-title gigs">Gigs</span>
             <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px' }} onClick={() => setAddingGig(a => !a)}>+ New Gig</button>
           </div>
           <GigsList gigs={gigs} today={today} refresh={refresh} adding={addingGig} setAdding={setAddingGig} categories={categories} />
         </section>
-        <section className="section">
+        <section className="section" id="section-meetings-list">
           <div className="section-hd">
             <span className="section-title inprogress">Meetings</span>
             <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px', background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={() => setAddingMeeting(a => !a)}>+ New Meeting</button>

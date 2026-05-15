@@ -435,6 +435,33 @@ html, body {
   .main { margin-left: 0; }
   .hide-mobile { display: none !important; }
   .show-mobile { display: flex !important; }
+
+  .mobile-section-nav {
+    overflow-x: auto;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .mobile-section-nav::-webkit-scrollbar { display: none; }
+
+  .mobile-nav-pill {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--pill-color, var(--text-dim));
+    border: 1px solid var(--pill-color, var(--border2));
+    background: none;
+    border-radius: 20px;
+    padding: 4px 12px;
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+    opacity: 0.75;
+  }
+  .mobile-nav-pill:active { opacity: 1; }
   .page { padding: 16px 16px 40px; }
 
   aside {

@@ -120,13 +120,29 @@ export default function App() {
       />
       <main className="main">
         <Topbar viewDay={viewDay} tick={tick} />
-        <div className="page-header">
+        <div className="page-header hide-mobile">
           <div className="page-title">{meta.title}</div>
           {subtitle && <div className="page-subtitle">{subtitle}</div>}
           <div className="page-actions">
             <button className="btn ghost" onClick={() => openArchive(meta.archiveTab)}>Activity</button>
-            <button className="btn ghost mobile-menu-btn" onClick={() => setSidebarOpen(o => !o)}>Menu</button>
           </div>
+        </div>
+        <div className="mobile-section-nav show-mobile">
+          {[
+            { id: 'section-backlog',      label: 'Backlog',      color: 'var(--c-backlog)' },
+            { id: 'section-todo-list',    label: 'Todo',         color: 'var(--c-todo)' },
+            { id: 'section-inprogress',   label: 'In Progress',  color: 'var(--c-inprogress)' },
+            { id: 'section-completed',    label: 'Completed',    color: 'var(--c-completed)' },
+            { id: 'section-gigs-list',    label: 'Gigs',         color: 'var(--c-gigs)' },
+            { id: 'section-meetings-list',label: 'Meetings',     color: 'var(--c-inprogress)' },
+          ].map(({ id, label, color }) => (
+            <button key={id} className="mobile-nav-pill" onClick={() => {
+              document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            style={{ '--pill-color': color }}>
+              {label}
+            </button>
+          ))}
         </div>
         <div className="page-area">
           {isMobile ? (

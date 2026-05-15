@@ -6,7 +6,7 @@ export default function ActivePage({ viewDay, refresh, tick, openArchive, openLo
   return (
     <div className="page">
       <div className="page-grid">
-        <section className="section">
+        <section className="section" id="section-inprogress">
           <div className="section-hd">
             <span className="section-title inprogress">In Progress</span>
             <span className="section-sub">· ongoing</span>
@@ -22,7 +22,7 @@ export default function ActivePage({ viewDay, refresh, tick, openArchive, openLo
           />
         </section>
 
-        <section className="section">
+        <section className="section" id="section-completed">
           <div className="section-hd">
             <span className="section-title completed">Completed</span>
           </div>

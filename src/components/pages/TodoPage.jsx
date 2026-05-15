@@ -9,7 +9,7 @@ export default function TodoPage({ viewDay, refresh, tick, openArchive, openLogP
   return (
     <div className="page">
       <div className="page-grid">
-        <section className="section">
+        <section className="section" id="section-backlog">
           <div className="section-hd">
             <span className="section-title backlog">Backlog</span>
             <span className="section-sub">· up next</span>
@@ -28,7 +28,7 @@ export default function TodoPage({ viewDay, refresh, tick, openArchive, openLogP
           </div>
         </section>
 
-        <section className="section">
+        <section className="section" id="section-todo-list">
           <div className="section-hd">
             <span className="section-title todo">To Do</span>
             <span className="section-sub">· today</span>
