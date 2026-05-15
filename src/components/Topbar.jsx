@@ -104,23 +104,21 @@ export default function Topbar({ viewDay, tick }) {
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--c-inprogress)', border: '1px solid var(--c-inprogress)', borderRadius: 3, padding: '1px 6px', opacity: 0.7 }}>viewing future</span>
           )}
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div className="hide-mobile" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 20 }}>
           <TaskWidget
             label="Next Deadline"
             name={stats.nextDeadline?.text}
             sub={stats.nextDeadline ? dueSub(stats.nextDeadline.dueDate, today) : null}
             color="var(--c-todo)"
           />
-          <div className="hide-mobile" style={{ display: 'contents' }}>
-            <StatDivider />
-            <TaskWidget
-              label="Next Gig"
-              name={nextGig?.name}
-              sub={nextGig ? dueSub(nextGig.date, today) : null}
-              color="var(--c-gigs)"
-              dot={nextGig ? Math.round((new Date(nextGig.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) <= 2 : false}
-            />
-          </div>
+          <StatDivider />
+          <TaskWidget
+            label="Next Gig"
+            name={nextGig?.name}
+            sub={nextGig ? dueSub(nextGig.date, today) : null}
+            color="var(--c-gigs)"
+            dot={nextGig ? Math.round((new Date(nextGig.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) <= 2 : false}
+          />
           <StatDivider />
           <TaskWidget
             label="Next Meeting"
@@ -134,9 +132,25 @@ export default function Topbar({ viewDay, tick }) {
 
       {/* Row 2: quote + counts */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 22, padding: '9px 28px' }}>
-        <div style={{ fontFamily: 'var(--font-nb)', fontStyle: 'italic', fontSize: 13, color: 'var(--text-dim)', flex: 1, display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0, overflow: 'hidden' }}>
+        <div className="hide-mobile" style={{ fontFamily: 'var(--font-nb)', fontStyle: 'italic', fontSize: 13, color: 'var(--text-dim)', flex: 1, display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0, overflow: 'hidden' }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{quote.text}"</span>
           <span style={{ fontFamily: 'var(--font-mono)', fontStyle: 'normal', fontSize: 9, letterSpacing: '0.06em', color: 'var(--text-dimmer)', flexShrink: 0 }}>— {quote.author}</span>
+        </div>
+        <div className="show-mobile" style={{ display: 'none', alignItems: 'center', gap: 20, flex: 1 }}>
+          <TaskWidget
+            label="Next Deadline"
+            name={stats.nextDeadline?.text}
+            sub={stats.nextDeadline ? dueSub(stats.nextDeadline.dueDate, today) : null}
+            color="var(--c-todo)"
+          />
+          <StatDivider />
+          <TaskWidget
+            label="Next Meeting"
+            name={nextMeeting?.name}
+            sub={nextMeeting ? dueSub(nextMeeting.date, today) : null}
+            color="var(--c-inprogress)"
+            dot={nextMeeting ? Math.round((new Date(nextMeeting.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) <= 2 : false}
+          />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
           <Stat num={stats.created}          label="Created"   cls="created" />

@@ -434,6 +434,7 @@ html, body {
   :root { --sidebar-w: 220px; }
   .main { margin-left: 0; }
   .hide-mobile { display: none !important; }
+  .show-mobile { display: flex !important; }
   .page { padding: 16px 16px 40px; }
 
   aside {
