@@ -532,6 +532,8 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
     >
       <div className="o-row o-task-row" data-depth={depth || undefined}
         onPointerDown={isMobile ? () => { onActivate(); setTimeout(() => inputRef.current?.focus(), 0); } : undefined}
+        onMouseEnter={!isMobile ? startScroll : undefined}
+        onMouseLeave={!isMobile ? stopScroll : undefined}
       >
         {depth > 0 && <span className="o-bullet" style={{ width: 14, flexShrink: 0, textAlign: 'center', fontSize: 16, lineHeight: '30px', color: 'var(--text-dimmer)', userSelect: 'none', marginLeft: -4 }}>·</span>}
         <div className={`o-check${task.done ? ' done' : ''}`} onClick={e => { e.stopPropagation(); onToggleDetail(); }} title="View activity log" />
