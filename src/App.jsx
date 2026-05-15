@@ -35,10 +35,13 @@ export default function App() {
   // ── Auth listener ────────────────────────────────────────────────────────
   useEffect(() => {
     let cleanupDB = null;
+    let activeUid = null;
     const unsubAuth = onAuthStateChanged(auth, (u) => {
+      if (u && u.uid === activeUid) return; // same user re-authed for token refresh
       setUser(u);
       setDbReady(false);
       if (cleanupDB) { cleanupDB(); cleanupDB = null; }
+      activeUid = u?.uid ?? null;
       if (u) {
         console.log('[Auth] signed in as', u.email, '| uid:', u.uid);
         cleanupDB = initDB(u.uid, refresh, () => {
