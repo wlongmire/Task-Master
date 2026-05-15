@@ -40,6 +40,7 @@ export default function App() {
       setDbReady(false);
       if (cleanupDB) { cleanupDB(); cleanupDB = null; }
       if (u) {
+        console.log('[Auth] signed in as', u.email, '| uid:', u.uid);
         cleanupDB = initDB(u.uid, refresh, () => {
           rolloverTodos();
           setDbReady(true);
