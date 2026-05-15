@@ -32,14 +32,20 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
   const [expanded, setExpanded] = useState(new Set()); // detail panels
   const containerRef = useRef();
 
-  // After every render, check if we need to focus a task input
+  // After every render, check if we need to focus/scroll to a task
   useEffect(() => {
     if (!_pendingFocus || !containerRef.current) return;
-    const input = containerRef.current.querySelector(`input[data-task-id="${_pendingFocus}"]`);
-    if (input) {
-      input.focus();
-      const len = input.value.length;
-      input.setSelectionRange(len, len);
+    const el = containerRef.current.querySelector(`textarea[data-task-id="${_pendingFocus}"], input[data-task-id="${_pendingFocus}"]`);
+    if (el) {
+      if (isMobile) {
+        // Don't focus (would re-open keyboard); just scroll the row into view
+        const row = el.closest('.o-row') ?? el;
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        el.focus();
+        const len = el.value?.length ?? 0;
+        try { el.setSelectionRange(len, len); } catch (_) {}
+      }
       _pendingFocus = null;
     }
   });
@@ -300,6 +306,8 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
                   listState={listState}
                   depth={1}
                   isMobile={isMobile}
+                  isActive={activeTaskId === task.id}
+                  onActivate={() => setActiveTaskId(task.id)}
                   expanded={expanded.has(task.id)}
                   onToggleDetail={() => toggleDetail(task.id)}
                   onAction={handleAction}
@@ -516,10 +524,9 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
     if (inputRef.current) inputRef.current.scrollLeft = 0;
   }, []);
 
-  const showActions = !isMobile || isActive;
-
   return (
     <div ref={wrapperRef}
+      className={isMobile && isActive ? 'task-row-active' : ''}
       onFocus={isMobile ? onActivate : undefined}
       onKeyDown={e => { if (e.key === 'Escape' && expanded) onToggleDetail(); }}
     >
@@ -552,8 +559,7 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
             </div>
           )}
         </div>
-        {showActions && (
-          <div className="o-actions">
+        <div className="o-actions">
             {isMobile ? (
               <>
                 {listState === 'backlog' && <button className="o-act promote" onMouseDown={e => e.preventDefault()} onClick={() => onAction('promote', task.id)}>↑ To Do</button>}
@@ -573,7 +579,6 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
               </>
             )}
           </div>
-        )}
       </div>
 
       {!isMobile && expanded && <DetailPanel task={task} onAction={onAction} />}

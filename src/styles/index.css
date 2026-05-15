@@ -441,7 +441,6 @@ html, body {
 
   /* Kill all hover effects — touch devices have no hover */
   .o-row:hover { background: none !important; }
-  .o-row:hover .o-actions { opacity: 0; } /* defeat desktop hover-reveal */
   .o-act:hover { color: var(--text-dim) !important; border-color: var(--border2) !important; background: none !important; }
   .o-act.promote:hover { color: var(--c-backlog) !important; }
   .o-act.start:hover { color: var(--c-inprogress) !important; }
@@ -452,8 +451,9 @@ html, body {
   .comp-act:hover { color: var(--text-dimmer) !important; border-color: var(--border2) !important; background: none !important; }
   .gig-item:hover { background: none !important; }
   .o-add:hover { background: none !important; }
-  /* Actions rendered by React on mobile must be fully visible */
-  .o-actions { opacity: 1 !important; }
+  /* Hide actions by default on mobile; show only for active task */
+  .o-actions { display: none !important; }
+  .task-row-active .o-actions { display: flex !important; }
 
   .o-task-row { flex-wrap: wrap; }
   .o-task-row .o-body { flex-basis: 100%; }
