@@ -114,7 +114,7 @@ export default function App() {
           {subtitle && <div className="page-subtitle">{subtitle}</div>}
           <div className="page-actions">
             <button className="btn ghost" onClick={() => openArchive(meta.archiveTab)}>Activity</button>
-            <button className="btn ghost mobile-menu-btn" onClick={() => setSidebarOpen(o => !o)}>☰</button>
+            <button className="btn ghost mobile-menu-btn" onClick={() => setSidebarOpen(o => !o)}>Menu</button>
           </div>
         </div>
         <div className="page-area">
