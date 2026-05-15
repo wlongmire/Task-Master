@@ -15,7 +15,7 @@ const TOPIC_COLORS = [
   'var(--c-completed)', 'var(--c-grateful)', 'var(--c-intentions)',
 ];
 
-export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onClearData, openArchive, archiveOpen, onCloseArchive, onTopicChange, onSignOut }) {
+export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onClearData, openArchive, archiveOpen, onCloseArchive, onTopicChange, onSignOut, mobileOpen, onMobileClose }) {
   const today = todayKey();
   const [confirmClear, setConfirmClear] = useState(false);
   const [importError, setImportError] = useState(null);
@@ -79,12 +79,19 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
   };
 
   return (
+    <>
+      {mobileOpen && (
+        <div onClick={onMobileClose} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          zIndex: 19, display: 'none',
+        }} className="sidebar-backdrop" />
+      )}
     <aside style={{
       position: 'fixed', top: 0, left: 0,
       width: 'var(--sidebar-w)', height: '100vh',
       background: 'var(--surface)', borderRight: '1px solid var(--border)',
-      display: 'flex', flexDirection: 'column', overflowY: 'auto', zIndex: 10,
-    }}>
+      display: 'flex', flexDirection: 'column', overflowY: 'auto', zIndex: 20,
+    }} className={mobileOpen ? 'sidebar-mobile-open' : ''}>
       <div style={{ padding: '18px 16px 4px', fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#6a6660' }}>
         Task Master
       </div>
@@ -114,7 +121,7 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
           color={p.color}
           active={page === p.id}
           count={pageCounts[p.id]}
-          onClick={() => setPage(p.id)}
+          onClick={() => { setPage(p.id); onMobileClose?.(); }}
         />
       ))}
 
@@ -225,6 +232,7 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
         </div>
       )}
     </aside>
+    </>
   );
 }
 

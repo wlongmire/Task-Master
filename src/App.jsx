@@ -30,6 +30,7 @@ export default function App() {
   const [archiveTab,  setArchiveTab]  = useState('activity');
   const [logPopup,    setLogPopup]    = useState(null);
   const [tick,        setTick]        = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
   // ── Auth listener ────────────────────────────────────────────────────────
@@ -104,6 +105,7 @@ export default function App() {
         archiveOpen={archiveOpen} onCloseArchive={() => setArchiveOpen(false)}
         onTopicChange={refresh}
         onSignOut={() => signOut(auth)}
+        mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)}
       />
       <main className="main">
         <Topbar viewDay={viewDay} tick={tick} />
@@ -112,6 +114,7 @@ export default function App() {
           {subtitle && <div className="page-subtitle">{subtitle}</div>}
           <div className="page-actions">
             <button className="btn ghost" onClick={() => openArchive(meta.archiveTab)}>Activity</button>
+            <button className="btn ghost mobile-menu-btn" onClick={() => setSidebarOpen(o => !o)}>☰</button>
           </div>
         </div>
         <div className="page-area">

@@ -431,7 +431,25 @@ html, body {
   .page-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
-  :root { --sidebar-w: 0px; }
+  :root { --sidebar-w: 220px; }
   .main { margin-left: 0; }
   .page { padding: 16px 16px 60px; }
+
+  aside {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  aside.sidebar-mobile-open {
+    transform: translateX(0);
+  }
+  .sidebar-backdrop {
+    display: block !important;
+  }
+  .mobile-menu-btn {
+    display: inline-flex !important;
+  }
+}
+
+@media (min-width: 701px) {
+  .mobile-menu-btn { display: none !important; }
 }
