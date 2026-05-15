@@ -170,8 +170,8 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
         <div style={{ padding: '4px 16px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           <FooterBtn onClick={() => archiveOpen ? onCloseArchive() : openArchive('activity')}>⊡ Activity</FooterBtn>
           <FooterBtn onClick={exportData}>⬇ Export Data</FooterBtn>
-          <FooterBtn onClick={onSignOut}>→ Sign Out</FooterBtn>
           <FooterBtn onClick={() => fileInputRef.current?.click()}>⬆ Import Data</FooterBtn>
+          <FooterBtn onClick={onSignOut}>→ Sign Out</FooterBtn>
           <input
             ref={fileInputRef}
             type="file"

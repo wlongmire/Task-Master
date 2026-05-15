@@ -321,25 +321,41 @@ export function importData(file) {
         // Firestore rejects undefined values — strip them out
         const clean = (obj) => JSON.parse(JSON.stringify(obj, (_, v) => v === undefined ? null : v));
 
-        const ops = [];
-        (data.tasks      || []).forEach(t => ops.push([_userDoc('tasks',      t.id), clean({ ...t, sortOrder: t.sortOrder ?? t.dateCreated ?? Date.now() })]));
-        (data.events     || []).forEach(t => ops.push([_userDoc('events',     t.id), clean(t)]));
-        (data.meetings   || []).forEach(t => ops.push([_userDoc('meetings',   t.id), clean(t)]));
-        (data.categories || []).forEach(t => ops.push([_userDoc('categories', t.id), clean(t)]));
-        Object.entries(data.grateful   || {}).forEach(([dk, v]) => ops.push([_userDoc('grateful',   dk), clean(v)]));
-        Object.entries(data.intentions || {}).forEach(([dk, v]) => ops.push([_userDoc('intentions', dk), clean(v)]));
-        Object.entries(data.briefings  || {}).forEach(([dk, v]) => ops.push([_userDoc('briefings',  dk), clean(v)]));
+        // Commit an array of [ref, val] pairs in chunks of 490
+        const commitChunks = async (ops) => {
+          while (ops.length) {
+            const chunk = ops.splice(0, 490);
+            const b = writeBatch(db);
+            chunk.forEach(([ref, val]) => b.set(ref, val));
+            await b.commit();
+          }
+        };
 
-        // Commit in chunks of 490 (Firestore limit is 500 per batch)
-        while (ops.length) {
-          const chunk = ops.splice(0, 490);
-          const b = writeBatch(db);
-          chunk.forEach(([ref, val]) => b.set(ref, val));
-          await b.commit();
-        }
+        // Write each collection separately so failures are isolated
+        const tasks = (data.tasks || []).map(t => [
+          _userDoc('tasks', t.id),
+          clean({ ...t, sortOrder: t.sortOrder ?? t.dateCreated ?? Date.now() }),
+        ]);
+        await commitChunks(tasks);
+
+        const events = (data.events || []).map(t => [_userDoc('events', t.id), clean(t)]);
+        await commitChunks(events);
+
+        const meetings = (data.meetings || []).map(t => [_userDoc('meetings', t.id), clean(t)]);
+        await commitChunks(meetings);
+
+        const categories = (data.categories || []).map(t => [_userDoc('categories', t.id), clean(t)]);
+        await commitChunks(categories);
+
+        const grateful   = Object.entries(data.grateful   || {}).map(([dk, v]) => [_userDoc('grateful',   dk), clean(v)]);
+        const intentions = Object.entries(data.intentions || {}).map(([dk, v]) => [_userDoc('intentions', dk), clean(v)]);
+        const briefings  = Object.entries(data.briefings  || {}).map(([dk, v]) => [_userDoc('briefings',  dk), clean(v)]);
+        await commitChunks([...grateful, ...intentions, ...briefings]);
+
         _refreshFn?.();
         resolve();
       } catch (err) {
+        console.error('Import error:', err);
         reject(new Error('Import failed: ' + err.message));
       }
     };
