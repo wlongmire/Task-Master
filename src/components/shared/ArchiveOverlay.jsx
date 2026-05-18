@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { getGratefulDays, getGrateful, getIntentionsDays, getIntentions, getReflectionDays, getReflection, getTasks, getEvents, getMeetings, formatDateShort, todayKey } from '../../db';
 
 const TABS = ['activity', 'grateful', 'intentions', 'reflections', 'events'];
@@ -17,10 +17,10 @@ function buildActivityFeed(tasks) {
   const events = [];
   tasks.forEach(task => {
     (task.log || []).forEach(entry => {
-      events.push({ id: entry.id, type: entry.type, taskText: task.text, note: entry.note, ts: entry.loggedAt });
+      events.push({ id: entry.id, type: entry.type, taskText: task.text, note: entry.note, ts: entry.loggedAt, fullLog: task.log });
     });
     if (task.archived && task.archivedAt) {
-      events.push({ id: task.id + '-arc', type: 'archived', taskText: task.text, note: null, ts: task.archivedAt });
+      events.push({ id: task.id + '-arc', type: 'archived', taskText: task.text, note: null, ts: task.archivedAt, fullLog: task.log });
     }
   });
   const byDay = {};
@@ -48,6 +48,12 @@ function dayHeader(dk) {
 }
 
 export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
+  const [expandedItems, setExpandedItems] = useState(new Set());
+  const toggleExpand = (id) => setExpandedItems(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -88,12 +94,50 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
               {events.map(e => {
                 const meta = EVENT_META[e.type] || { label: e.type, color: 'var(--text-dimmer)' };
                 const timeStr = new Date(e.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                const isDone = e.type === 'done';
+                const isExpanded = expandedItems.has(e.id);
+                const sortedLog = isDone && e.fullLog
+                  ? [...e.fullLog].sort((a, b) => b.loggedAt - a.loggedAt)
+                  : [];
                 return (
-                  <div key={e.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0, width: 52 }}>{timeStr}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: meta.color, flexShrink: 0, width: 62 }}>{meta.label}</span>
-                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.taskText || 'Untitled'}</span>
-                    {e.note && <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-dim)', flexShrink: 0, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {e.note}</span>}
+                  <div key={e.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    {/* Main row */}
+                    <div
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '5px 0', cursor: isDone ? 'pointer' : 'default' }}
+                      onClick={isDone ? () => toggleExpand(e.id) : undefined}
+                    >
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0, width: 52, paddingTop: 2 }}>{timeStr}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: meta.color, flexShrink: 0, width: 62, paddingTop: 2 }}>{meta.label}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.taskText || 'Untitled'}</span>
+                          {isDone && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', flexShrink: 0 }}>{isExpanded ? '▴' : '▾'}</span>}
+                        </div>
+                        {e.note && (
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{e.note}</div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Expanded log */}
+                    {isDone && isExpanded && sortedLog.length > 0 && (
+                      <div style={{ marginLeft: 114, marginBottom: 6, borderLeft: '2px solid var(--border)', paddingLeft: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {sortedLog.map(entry => {
+                          const entryMeta = EVENT_META[entry.type] || { label: entry.type, color: 'var(--text-dimmer)' };
+                          const entryTime = new Date(entry.loggedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                          return (
+                            <div key={entry.id} style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '3px 0' }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0 }}>{entryTime}</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: entryMeta.color, flexShrink: 0 }}>{entryMeta.label}</span>
+                              </div>
+                              {entry.note && (
+                                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-dim)', paddingLeft: 0 }}>{entry.note}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
