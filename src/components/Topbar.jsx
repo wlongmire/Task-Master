@@ -2,28 +2,28 @@ import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { getTasks, getEvents, getMeetings, todayKey } from '../db';
 
 const TAROT = [
-  { name: 'The Fool',         meaning: 'New beginnings — leap before you look.' },
-  { name: 'The Magician',     meaning: 'All the tools you need are already in hand.' },
-  { name: 'The High Priestess', meaning: 'Trust the quiet knowing beneath the noise.' },
-  { name: 'The Empress',      meaning: 'Abundance flows when you create freely.' },
-  { name: 'The Emperor',      meaning: 'Steady structure brings lasting results.' },
-  { name: 'The Hierophant',   meaning: 'Seek guidance; respect what has endured.' },
-  { name: 'The Lovers',       meaning: 'Alignment — choose what reflects your values.' },
-  { name: 'The Chariot',      meaning: 'Push forward; will and focus win today.' },
-  { name: 'Strength',         meaning: 'Gentle persistence outlasts brute force.' },
-  { name: 'The Hermit',       meaning: 'Step back; the answer comes in solitude.' },
-  { name: 'Wheel of Fortune', meaning: 'A cycle turns — ride it, don\'t resist it.' },
-  { name: 'Justice',          meaning: 'Truth and accountability clear the path.' },
-  { name: 'The Hanged Man',   meaning: 'Pause and see the problem from another angle.' },
-  { name: 'Death',            meaning: 'Something ends so something better can begin.' },
-  { name: 'Temperance',       meaning: 'Balance and patience compound quietly.' },
-  { name: 'The Devil',        meaning: 'Name what binds you — awareness breaks chains.' },
-  { name: 'The Tower',        meaning: 'What crumbles was already unstable.' },
-  { name: 'The Star',         meaning: 'After the storm, hope and renewal.' },
-  { name: 'The Moon',         meaning: 'Not everything is as it appears — look closer.' },
-  { name: 'The Sun',          meaning: 'Clarity, energy, and well-earned confidence.' },
-  { name: 'Judgement',        meaning: 'Honest reflection leads to a fresh start.' },
-  { name: 'The World',        meaning: 'You\'ve come full circle — celebrate it.' },
+  { name: 'The Fool',           url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/fool/' },
+  { name: 'The Magician',       url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/magician/' },
+  { name: 'The High Priestess', url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/high-priestess/' },
+  { name: 'The Empress',        url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/empress/' },
+  { name: 'The Emperor',        url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/emperor/' },
+  { name: 'The Hierophant',     url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/hierophant/' },
+  { name: 'The Lovers',         url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/lovers/' },
+  { name: 'The Chariot',        url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/chariot/' },
+  { name: 'Strength',           url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/strength/' },
+  { name: 'The Hermit',         url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/hermit/' },
+  { name: 'Wheel of Fortune',   url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/wheel-of-fortune/' },
+  { name: 'Justice',            url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/justice/' },
+  { name: 'The Hanged Man',     url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/hanged-man/' },
+  { name: 'Death',              url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/death/' },
+  { name: 'Temperance',         url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/temperance/' },
+  { name: 'The Devil',          url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/devil/' },
+  { name: 'The Tower',          url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/tower/' },
+  { name: 'The Star',           url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/star/' },
+  { name: 'The Moon',           url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/moon/' },
+  { name: 'The Sun',            url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/sun/' },
+  { name: 'Judgement',          url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/judgement/' },
+  { name: 'The World',          url: 'https://www.biddytarot.com/tarot-card-meanings/major-arcana/world/' },
 ];
 
 function getDailyTarot() {
@@ -168,9 +168,9 @@ export default function Topbar({ viewDay, tick }) {
         </div>
         <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <StatDivider />
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dimmer)', flexShrink: 0 }}>✦ {tarot.name}</span>
-            <span style={{ fontFamily: 'var(--font-nb)', fontStyle: 'italic', fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{tarot.meaning}</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dimmer)', flexShrink: 0 }}>✦</span>
+            <a href={tarot.url} target="_blank" rel="noreferrer" style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', color: 'var(--text-dim)', textDecoration: 'none', whiteSpace: 'nowrap', borderBottom: '1px dotted var(--text-dimmer)' }}>{tarot.name}</a>
           </div>
         </div>
         <div className="show-mobile" style={{ display: 'none', alignItems: 'center', gap: 20, flex: 1 }}>
