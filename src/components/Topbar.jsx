@@ -168,9 +168,9 @@ export default function Topbar({ viewDay, tick }) {
             <span style={{ fontFamily: 'var(--font-mono)', fontStyle: 'normal', fontSize: 9, letterSpacing: '0.06em', color: 'var(--text-dimmer)', flexShrink: 0 }}>— {quote.author}</span>
           </div>
           <StatDivider />
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexShrink: 0 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dimmer)' }}>✦</span>
-            <a href={tarot.url} target="_blank" rel="noreferrer" style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', color: 'var(--text-dim)', textDecoration: 'none', whiteSpace: 'nowrap', borderBottom: '1px dotted var(--text-dimmer)' }}>{tarot.name}</a>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexShrink: 0 }}>
+            <a href={tarot.url} target="_blank" rel="noreferrer" style={{ fontFamily: 'var(--font-nb)', fontStyle: 'italic', fontSize: 13, color: 'var(--text-dim)', textDecoration: 'none', whiteSpace: 'nowrap', borderBottom: '1px dotted var(--text-dimmer)' }}>{tarot.name}</a>
+            <span style={{ fontFamily: 'var(--font-mono)', fontStyle: 'normal', fontSize: 9, letterSpacing: '0.06em', color: 'var(--text-dimmer)', flexShrink: 0 }}>— card of the day</span>
           </div>
         </div>
         <div className="show-mobile" style={{ display: 'none', alignItems: 'center', gap: 20, flex: 1 }}>
