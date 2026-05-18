@@ -35,6 +35,33 @@ function buildActivityFeed(tasks) {
     .map(([dk, evts]) => [dk, [...evts].sort((a, b) => b.ts - a.ts)]);
 }
 
+const _titleRafs = new WeakMap();
+
+function startTitleScroll(wrapper) {
+  const span = wrapper.querySelector('.act-title-inner');
+  if (!span) return;
+  const max = span.scrollWidth - wrapper.clientWidth;
+  if (max <= 0) return;
+  const duration = 800 + max * 18;
+  let t0 = null;
+  const step = (ts) => {
+    if (!t0) t0 = ts;
+    const p = Math.min((ts - t0) / duration, 1);
+    const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    span.style.transform = `translateX(-${e * max}px)`;
+    if (p < 1) _titleRafs.set(wrapper, requestAnimationFrame(step));
+  };
+  _titleRafs.set(wrapper, requestAnimationFrame(step));
+}
+
+function stopTitleScroll(wrapper) {
+  const raf = _titleRafs.get(wrapper);
+  if (raf) cancelAnimationFrame(raf);
+  _titleRafs.delete(wrapper);
+  const span = wrapper.querySelector('.act-title-inner');
+  if (span) span.style.transform = 'translateX(0)';
+}
+
 function dayHeader(dk) {
   const today = todayKey();
   const yesterday = new Date(today + 'T00:00:00');
@@ -110,7 +137,13 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: meta.color, flexShrink: 0, width: 62, paddingTop: 2 }}>{meta.label}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.taskText || 'Untitled'}</span>
+                          <div
+                            style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
+                            onMouseEnter={e => startTitleScroll(e.currentTarget)}
+                            onMouseLeave={e => stopTitleScroll(e.currentTarget)}
+                          >
+                            <span className="act-title-inner" style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text)', display: 'inline-block', whiteSpace: 'nowrap' }}>{e.taskText || 'Untitled'}</span>
+                          </div>
                           {isDone && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', flexShrink: 0 }}>{isExpanded ? '▴' : '▾'}</span>}
                         </div>
                         {e.note && (
