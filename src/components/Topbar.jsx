@@ -1,6 +1,36 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react';
 import { getTasks, getEvents, getMeetings, todayKey } from '../db';
 
+const TAROT = [
+  { name: 'The Fool',         meaning: 'New beginnings — leap before you look.' },
+  { name: 'The Magician',     meaning: 'All the tools you need are already in hand.' },
+  { name: 'The High Priestess', meaning: 'Trust the quiet knowing beneath the noise.' },
+  { name: 'The Empress',      meaning: 'Abundance flows when you create freely.' },
+  { name: 'The Emperor',      meaning: 'Steady structure brings lasting results.' },
+  { name: 'The Hierophant',   meaning: 'Seek guidance; respect what has endured.' },
+  { name: 'The Lovers',       meaning: 'Alignment — choose what reflects your values.' },
+  { name: 'The Chariot',      meaning: 'Push forward; will and focus win today.' },
+  { name: 'Strength',         meaning: 'Gentle persistence outlasts brute force.' },
+  { name: 'The Hermit',       meaning: 'Step back; the answer comes in solitude.' },
+  { name: 'Wheel of Fortune', meaning: 'A cycle turns — ride it, don\'t resist it.' },
+  { name: 'Justice',          meaning: 'Truth and accountability clear the path.' },
+  { name: 'The Hanged Man',   meaning: 'Pause and see the problem from another angle.' },
+  { name: 'Death',            meaning: 'Something ends so something better can begin.' },
+  { name: 'Temperance',       meaning: 'Balance and patience compound quietly.' },
+  { name: 'The Devil',        meaning: 'Name what binds you — awareness breaks chains.' },
+  { name: 'The Tower',        meaning: 'What crumbles was already unstable.' },
+  { name: 'The Star',         meaning: 'After the storm, hope and renewal.' },
+  { name: 'The Moon',         meaning: 'Not everything is as it appears — look closer.' },
+  { name: 'The Sun',          meaning: 'Clarity, energy, and well-earned confidence.' },
+  { name: 'Judgement',        meaning: 'Honest reflection leads to a fresh start.' },
+  { name: 'The World',        meaning: 'You\'ve come full circle — celebrate it.' },
+];
+
+function getDailyTarot() {
+  const dayIndex = Math.floor(Date.now() / 86400000);
+  return TAROT[dayIndex % TAROT.length];
+}
+
 const QUOTES = [
   { text: 'Do what you can, with what you have, where you are.', author: 'Theodore Roosevelt' },
   { text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' },
@@ -82,6 +112,7 @@ export default function Topbar({ viewDay, tick }) {
   }, [tick]);
 
   const quote = getDailyQuote();
+  const tarot = getDailyTarot();
 
   const dateLabel = (() => {
     if (viewDay === today) return time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -134,6 +165,13 @@ export default function Topbar({ viewDay, tick }) {
         <div className="hide-mobile" style={{ fontFamily: 'var(--font-nb)', fontStyle: 'italic', fontSize: 13, color: 'var(--text-dim)', flex: 1, display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0, overflow: 'hidden' }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{quote.text}"</span>
           <span style={{ fontFamily: 'var(--font-mono)', fontStyle: 'normal', fontSize: 9, letterSpacing: '0.06em', color: 'var(--text-dimmer)', flexShrink: 0 }}>— {quote.author}</span>
+        </div>
+        <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <StatDivider />
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dimmer)', flexShrink: 0 }}>✦ {tarot.name}</span>
+            <span style={{ fontFamily: 'var(--font-nb)', fontStyle: 'italic', fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{tarot.meaning}</span>
+          </div>
         </div>
         <div className="show-mobile" style={{ display: 'none', alignItems: 'center', gap: 20, flex: 1 }}>
           <TaskWidget
