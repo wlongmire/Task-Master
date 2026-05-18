@@ -114,7 +114,7 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
                           {isDone && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', flexShrink: 0 }}>{isExpanded ? '▴' : '▾'}</span>}
                         </div>
                         {e.note && (
-                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{e.note}</div>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isExpanded ? 'normal' : 'nowrap' }}>{e.note}</div>
                         )}
                       </div>
                     </div>
