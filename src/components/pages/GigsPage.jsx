@@ -29,11 +29,11 @@ export default function GigsPage({ refresh, tick, openArchive }) {
   const [addingMeeting, setAddingMeeting] = useState(false);
 
   const gigs = useMemo(() =>
-    getEvents().filter(e => !e.archived).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date)),
+    getEvents().filter(e => !e.archived).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
   [tick]);
 
   const meetings = useMemo(() =>
-    getMeetings().filter(m => !m.archived).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date)),
+    getMeetings().filter(m => !m.archived).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
   [tick]);
 
   const categories = useMemo(() => getCategories(), [tick]);

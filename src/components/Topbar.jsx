@@ -103,7 +103,7 @@ export default function Topbar({ viewDay, tick }) {
 
   const nextGig = useMemo(() => {
     const events = getEvents().filter(e => !e.archived && !e.done && e.date >= today);
-    return events.sort((a, b) => a.date.localeCompare(b.date))[0] || null;
+    return events.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))[0] || null;
   }, [tick]);
 
   const nextMeeting = useMemo(() => {
