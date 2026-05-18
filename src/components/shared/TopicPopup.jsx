@@ -8,8 +8,8 @@ const STATE_COLORS = { inprogress: 'var(--c-inprogress)', todo: 'var(--c-todo)',
 export default function TopicPopup({ topicId, onClose, tick, archived = false, onArchive, onRestore, onDelete }) {
   const cat      = useMemo(() => [...getCategories(), ...getArchivedCategories()].find(c => c.id === topicId), [topicId, tick]);
   const tasks    = useMemo(() => getTasks().filter(t => (archived ? t.archived : !t.archived) && t.categoryId === topicId), [topicId, tick, archived]);
-  const gigs     = useMemo(() => getEvents().filter(e => !e.archived && e.categoryId === topicId), [topicId, tick]);
-  const meetings = useMemo(() => getMeetings().filter(m => !m.archived && m.categoryId === topicId), [topicId, tick]);
+  const gigs     = useMemo(() => getEvents().filter(e => !e.archived && e.categoryId === topicId).sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')), [topicId, tick]);
+  const meetings = useMemo(() => getMeetings().filter(m => !m.archived && m.categoryId === topicId).sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')), [topicId, tick]);
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
