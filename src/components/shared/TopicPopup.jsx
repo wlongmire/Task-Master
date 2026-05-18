@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo } from 'react';
-import { getCategories, getTasks, getEvents, getMeetings } from '../../db';
+import { getCategories, getArchivedCategories, getTasks, getEvents, getMeetings } from '../../db';
 
 const STATE_ORDER  = ['inprogress', 'todo', 'backlog', 'completed'];
 const STATE_LABELS = { inprogress: 'In Progress', todo: 'To Do', backlog: 'Backlog', completed: 'Done' };
 const STATE_COLORS = { inprogress: 'var(--c-inprogress)', todo: 'var(--c-todo)', backlog: 'var(--c-backlog)', completed: 'var(--c-completed)' };
 
-export default function TopicPopup({ topicId, onClose, tick }) {
-  const cat      = useMemo(() => getCategories().find(c => c.id === topicId), [topicId, tick]);
-  const tasks    = useMemo(() => getTasks().filter(t => !t.archived && t.categoryId === topicId), [topicId, tick]);
+export default function TopicPopup({ topicId, onClose, tick, archived = false, onArchive, onRestore, onDelete }) {
+  const cat      = useMemo(() => [...getCategories(), ...getArchivedCategories()].find(c => c.id === topicId), [topicId, tick]);
+  const tasks    = useMemo(() => getTasks().filter(t => (archived ? t.archived : !t.archived) && t.categoryId === topicId), [topicId, tick, archived]);
   const gigs     = useMemo(() => getEvents().filter(e => !e.archived && e.categoryId === topicId), [topicId, tick]);
   const meetings = useMemo(() => getMeetings().filter(m => !m.archived && m.categoryId === topicId), [topicId, tick]);
 
@@ -34,14 +34,34 @@ export default function TopicPopup({ topicId, onClose, tick }) {
       }}>
         {/* Header */}
         <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 17, fontWeight: 700, color: 'var(--text)', flex: 1, letterSpacing: '-0.01em' }}>
-            {cat?.name || 'Topic'}
-          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 17, fontWeight: 700, color: archived ? 'var(--text-dim)' : 'var(--text)', letterSpacing: '-0.01em' }}>
+              {cat?.name || 'Topic'}
+            </span>
+            {archived && <span style={{ marginLeft: 8, fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dimmer)' }}>archived</span>}
+          </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <Pill count={tasks.length}    label="tasks"    color="var(--c-todo)" />
             <Pill count={gigs.length}     label="gigs"     color="var(--c-gigs)" />
             <Pill count={meetings.length} label="meetings" color="var(--c-inprogress)" />
           </div>
+          {archived ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={onRestore}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: 'var(--c-completed)', background: 'none', border: '1px solid var(--c-completed)', borderRadius: 3, cursor: 'pointer', padding: '3px 8px' }}>
+                ↩ Restore
+              </button>
+              <button onClick={onDelete}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: '#e05050', background: 'none', border: '1px solid #e05050', borderRadius: 3, cursor: 'pointer', padding: '3px 8px' }}>
+                ✕ Delete
+              </button>
+            </div>
+          ) : onArchive ? (
+            <button onClick={onArchive}
+              style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: 'var(--text-dimmer)', background: 'none', border: '1px solid var(--border2)', borderRadius: 3, cursor: 'pointer', padding: '3px 8px' }}>
+              ⊡ Archive
+            </button>
+          ) : null}
           <button onClick={onClose} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: 'var(--text-dimmer)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>✕</button>
         </div>
 

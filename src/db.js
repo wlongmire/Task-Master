@@ -260,7 +260,8 @@ export function rolloverTodos() {
 }
 
 // ── Categories ────────────────────────────────────────────────────────────────
-export function getCategories() { return [..._cache.categories]; }
+export function getCategories()         { return [..._cache.categories].filter(c => !c.archived); }
+export function getArchivedCategories() { return [..._cache.categories].filter(c => c.archived).sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0)); }
 
 export function addCategory(cat) {
   const newCat = { id: genId(), ...cat };
@@ -276,8 +277,40 @@ export function updateCategory(id, updates) {
   updateDoc(_userDoc('categories', id), clean(updates));
   _refreshFn?.();
 }
+export function archiveCategory(id) {
+  const now = Date.now();
+  _cache.tasks.forEach(t => {
+    if (t.categoryId === id && !t.archived) {
+      t.archived = true; t.archivedAt = now;
+      updateDoc(_userDoc('tasks', t.id), { archived: true, archivedAt: now });
+    }
+  });
+  const idx = _cache.categories.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    _cache.categories[idx] = { ..._cache.categories[idx], archived: true, archivedAt: now };
+    updateDoc(_userDoc('categories', id), { archived: true, archivedAt: now });
+  }
+  _refreshFn?.();
+}
+export function restoreCategory(id) {
+  _cache.tasks.forEach(t => {
+    if (t.categoryId === id && t.archived) {
+      t.archived = false; t.archivedAt = null; t.state = 'todo';
+      updateDoc(_userDoc('tasks', t.id), { archived: false, archivedAt: null, state: 'todo' });
+    }
+  });
+  const idx = _cache.categories.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    _cache.categories[idx] = { ..._cache.categories[idx], archived: false, archivedAt: null };
+    updateDoc(_userDoc('categories', id), { archived: false, archivedAt: null });
+  }
+  _refreshFn?.();
+}
 export function deleteCategory(id) {
-  _cache.categories = _cache.categories.filter(c => c.id !== id);
+  // Cascade-delete all tasks belonging to this category
+  _cache.tasks.filter(t => t.categoryId === id).forEach(t => deleteDoc(_userDoc('tasks', t.id)));
+  _cache.tasks       = _cache.tasks.filter(t => t.categoryId !== id);
+  _cache.categories  = _cache.categories.filter(c => c.id !== id);
   deleteDoc(_userDoc('categories', id));
   _refreshFn?.();
 }

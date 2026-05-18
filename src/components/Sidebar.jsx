@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef } from 'react';
 import MiniCalendar from './shared/MiniCalendar';
 import TopicPopup from './shared/TopicPopup';
-import { getTasks, getEvents, getCategories, addCategory, updateCategory, deleteCategory, todayKey, offsetDate, exportData, importData, clearAllData } from '../db';
+import { getTasks, getEvents, getCategories, getArchivedCategories, addCategory, updateCategory, archiveCategory, restoreCategory, deleteCategory, todayKey, offsetDate, exportData, importData, clearAllData } from '../db';
 
 const PAGES = [
   { id: 'daily',  label: 'Daily',      color: 'var(--c-grateful)' },
@@ -20,7 +20,9 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
   const [confirmClear, setConfirmClear] = useState(false);
   const [importError, setImportError] = useState(null);
   const [editingTopic, setEditingTopic] = useState(null);
-  const [topicPopup, setTopicPopup] = useState(null);
+  const [topicPopup, setTopicPopup] = useState(null);       // active topic popup
+  const [archivedPopup, setArchivedPopup] = useState(null); // archived topic popup
+  const [archivedOpen, setArchivedOpen] = useState(false);  // archived section toggle
   const newTopicRef = useRef();
   const fileInputRef = useRef();
 
@@ -33,7 +35,8 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
       .catch(err => setImportError(err.message));
   };
 
-  const topics = useMemo(() => getCategories(), [tick]);
+  const topics         = useMemo(() => getCategories(), [tick]);
+  const archivedTopics = useMemo(() => getArchivedCategories(), [tick]);
 
   const handleAddTopic = () => {
     const cat = addCategory({ name: 'New Topic', color: TOPIC_COLORS[topics.length % TOPIC_COLORS.length] });
@@ -47,8 +50,21 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
     setEditingTopic(null);
   };
 
+  const handleArchiveTopic = (id) => {
+    archiveCategory(id);
+    setTopicPopup(null);
+    onTopicChange?.();
+  };
+
+  const handleRestoreTopic = (id) => {
+    restoreCategory(id);
+    setArchivedPopup(null);
+    onTopicChange?.();
+  };
+
   const handleDeleteTopic = (id) => {
     deleteCategory(id);
+    setArchivedPopup(null);
     onTopicChange?.();
   };
 
@@ -144,8 +160,8 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
         </div>
         {topics.map(topic => (
           <div key={topic.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 16px', borderLeft: '2px solid transparent' }}
-            onMouseEnter={e => e.currentTarget.querySelector('.topic-del').style.opacity = '1'}
-            onMouseLeave={e => e.currentTarget.querySelector('.topic-del').style.opacity = '0'}>
+            onMouseEnter={e => e.currentTarget.querySelector('.topic-arc').style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.querySelector('.topic-arc').style.opacity = '0'}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: '#44423e' }} />
             {editingTopic === topic.id ? (
               <input
@@ -166,16 +182,56 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
                 {topic.name}
               </span>
             )}
-            <button className="topic-del"
-              onClick={() => handleDeleteTopic(topic.id)}
+            <button className="topic-arc"
+              title="Archive topic"
+              onClick={() => handleArchiveTopic(topic.id)}
               style={{ opacity: 0, fontFamily: 'var(--font-mono)', fontSize: 9, color: '#666360', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'opacity 0.1s' }}
-              onMouseEnter={e => e.target.style.color = '#e05050'}
+              onMouseEnter={e => e.target.style.color = 'var(--text-dim)'}
               onMouseLeave={e => e.target.style.color = '#666360'}
-            >✕</button>
+            >⊡</button>
           </div>
         ))}
         {topics.length === 0 && (
           <div style={{ padding: '4px 16px 8px', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#444240' }}>No topics yet</div>
+        )}
+
+        {/* Archived topics */}
+        {archivedTopics.length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <button
+              onClick={() => setArchivedOpen(o => !o)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555250' }}>
+                {archivedOpen ? '▾' : '▸'} Archived ({archivedTopics.length})
+              </span>
+            </button>
+            {archivedOpen && archivedTopics.map(topic => (
+              <div key={topic.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 16px 4px 24px' }}
+                onMouseEnter={e => { e.currentTarget.querySelector('.arc-restore').style.opacity = '1'; e.currentTarget.querySelector('.arc-del').style.opacity = '1'; }}
+                onMouseLeave={e => { e.currentTarget.querySelector('.arc-restore').style.opacity = '0'; e.currentTarget.querySelector('.arc-del').style.opacity = '0'; }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: '#333130' }} />
+                <span
+                  onClick={() => setArchivedPopup(topic.id)}
+                  style={{ flex: 1, fontFamily: 'var(--font-ui)', fontSize: 12, color: '#666360', cursor: 'pointer', userSelect: 'none' }}>
+                  {topic.name}
+                </span>
+                <button className="arc-restore"
+                  title="Restore topic"
+                  onClick={() => handleRestoreTopic(topic.id)}
+                  style={{ opacity: 0, fontFamily: 'var(--font-mono)', fontSize: 9, color: '#666360', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'opacity 0.1s' }}
+                  onMouseEnter={e => e.target.style.color = 'var(--c-completed)'}
+                  onMouseLeave={e => e.target.style.color = '#666360'}
+                >↩</button>
+                <button className="arc-del"
+                  title="Delete permanently"
+                  onClick={() => handleDeleteTopic(topic.id)}
+                  style={{ opacity: 0, fontFamily: 'var(--font-mono)', fontSize: 9, color: '#666360', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'opacity 0.1s' }}
+                  onMouseEnter={e => e.target.style.color = '#e05050'}
+                  onMouseLeave={e => e.target.style.color = '#666360'}
+                >✕</button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -205,7 +261,14 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
       </div>
 
       {topicPopup && (
-        <TopicPopup topicId={topicPopup} onClose={() => setTopicPopup(null)} tick={tick} />
+        <TopicPopup topicId={topicPopup} onClose={() => setTopicPopup(null)} tick={tick}
+          onArchive={() => handleArchiveTopic(topicPopup)} />
+      )}
+      {archivedPopup && (
+        <TopicPopup topicId={archivedPopup} onClose={() => setArchivedPopup(null)} tick={tick}
+          archived
+          onRestore={() => handleRestoreTopic(archivedPopup)}
+          onDelete={() => handleDeleteTopic(archivedPopup)} />
       )}
 
       {confirmClear && (
