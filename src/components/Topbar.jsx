@@ -27,8 +27,8 @@ const TAROT = [
 ];
 
 function getDailyTarot() {
-  const dayIndex = Math.floor(Date.now() / 86400000);
-  return TAROT[dayIndex % TAROT.length];
+  const idx = new Date().getDate() % TAROT.length;
+  return TAROT[idx];
 }
 
 const QUOTES = [
