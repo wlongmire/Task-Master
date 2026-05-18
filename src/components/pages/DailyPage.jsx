@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { getGrateful, setGrateful, getIntentions, setIntentions, todayKey } from '../../db';
+import { getGrateful, setGrateful, getIntentions, setIntentions, getReflection, setReflection, todayKey } from '../../db';
 
 function NotebookSection({ title, colorVar, label, placeholder, hint, value, onChange, readOnly, onArchive }) {
   const taRef = useRef();
@@ -41,11 +41,13 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
 
   const [grateful, setGratefulState] = useState(() => getGrateful(viewDay).text || '');
   const [intentions, setIntentionsState] = useState(() => getIntentions(viewDay).text || '');
+  const [reflection, setReflectionState] = useState(() => getReflection(viewDay).text || '');
 
   // Re-read when viewDay or tick changes
   useEffect(() => {
     setGratefulState(getGrateful(viewDay).text || '');
     setIntentionsState(getIntentions(viewDay).text || '');
+    setReflectionState(getReflection(viewDay).text || '');
   }, [viewDay, tick]);
 
   const gratefulTimer = useRef(null);
@@ -60,6 +62,14 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
     setIntentionsState(val);
     clearTimeout(intentionsTimer.current);
     intentionsTimer.current = setTimeout(() => { setIntentions(viewDay, val); refresh(); }, 400);
+  };
+
+  const reflectionTimer = useRef(null);
+
+  const handleReflection = (val) => {
+    setReflectionState(val);
+    clearTimeout(reflectionTimer.current);
+    reflectionTimer.current = setTimeout(() => { setReflection(viewDay, val); refresh(); }, 400);
   };
 
   return (
@@ -87,6 +97,17 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
             onChange={handleIntentions}
             readOnly={!isToday}
             onArchive={() => openArchive('intentions')}
+          />
+          <NotebookSection
+            title="Reflection"
+            colorVar="--c-reflection"
+            label="How did today go?"
+            placeholder="What happened, what you felt, what you'd do differently..."
+            hint={isToday ? 'Resets at midnight · saved to archive' : 'Read-only — past day'}
+            value={reflection}
+            onChange={handleReflection}
+            readOnly={!isToday}
+            onArchive={() => openArchive('reflections')}
           />
         </div>
       </div>

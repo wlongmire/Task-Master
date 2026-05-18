@@ -1,9 +1,9 @@
 import React, { useMemo, useEffect } from 'react';
-import { getGratefulDays, getGrateful, getIntentionsDays, getIntentions, getTasks, getEvents, getMeetings, formatDateShort, todayKey } from '../../db';
+import { getGratefulDays, getGrateful, getIntentionsDays, getIntentions, getReflectionDays, getReflection, getTasks, getEvents, getMeetings, formatDateShort, todayKey } from '../../db';
 
-const TABS = ['activity', 'grateful', 'intentions', 'events'];
+const TABS = ['activity', 'grateful', 'intentions', 'reflections', 'events'];
 
-const TAB_LABELS = { activity: 'Activity', grateful: 'Grateful', intentions: 'Intentions', events: 'Events' };
+const TAB_LABELS = { activity: 'Activity', grateful: 'Grateful', intentions: 'Intentions', reflections: 'Reflection', events: 'Events' };
 
 const EVENT_META = {
   created:  { label: 'Created',   color: 'var(--text-dimmer)' },
@@ -122,6 +122,21 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
       ? <div className="archive-empty">No intention entries yet.</div>
       : days.map(dk => {
           const entry = getIntentions(dk);
+          if (!entry.text) return null;
+          return (
+            <div key={dk}>
+              <div className="archive-group-label">{formatDateShort(dk)}</div>
+              <div className="archive-entry">{entry.text}</div>
+            </div>
+          );
+        });
+
+  } else if (tab === 'reflections') {
+    const days = getReflectionDays();
+    content = days.length === 0
+      ? <div className="archive-empty">No reflection entries yet.</div>
+      : days.map(dk => {
+          const entry = getReflection(dk);
           if (!entry.text) return null;
           return (
             <div key={dk}>

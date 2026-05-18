@@ -26,11 +26,11 @@ let _onReadyFn = null;
 let _unsubs    = [];
 let _loaded    = new Set();
 
-const COLLECTIONS = ['tasks', 'events', 'meetings', 'categories', 'grateful', 'intentions', 'briefings'];
+const COLLECTIONS = ['tasks', 'events', 'meetings', 'categories', 'grateful', 'intentions', 'briefings', 'reflections'];
 
 let _cache = {
   tasks: [], events: [], meetings: [], categories: [],
-  grateful: {}, intentions: {}, briefings: {},
+  grateful: {}, intentions: {}, briefings: {}, reflections: {},
 };
 
 function _userCol(name)       { return collection(db, 'users', _uid, name); }
@@ -53,7 +53,7 @@ export function initDB(uid, onRefresh, onReady) {
   _uid       = uid;
   _refreshFn = onRefresh;
   _onReadyFn = onReady;
-  _cache     = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {} };
+  _cache     = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
 
   // Array collections
   for (const col of ['tasks', 'events', 'meetings', 'categories']) {
@@ -65,7 +65,7 @@ export function initDB(uid, onRefresh, onReady) {
   }
 
   // Map collections (keyed by date)
-  for (const col of ['grateful', 'intentions', 'briefings']) {
+  for (const col of ['grateful', 'intentions', 'briefings', 'reflections']) {
     const unsub = onSnapshot(_userCol(col), snap => {
       _cache[col] = {};
       snap.docs.forEach(d => { _cache[col][d.id] = d.data(); });
@@ -80,7 +80,7 @@ export function initDB(uid, onRefresh, onReady) {
   const resync = () => {
     if (document.hidden || !_uid) return;
     const arrayCols = ['tasks', 'events', 'meetings', 'categories'];
-    const mapCols   = ['grateful', 'intentions', 'briefings'];
+    const mapCols   = ['grateful', 'intentions', 'briefings', 'reflections'];
     Promise.all([
       ...arrayCols.map(col =>
         getDocs(_userCol(col)).then(snap => {
@@ -142,6 +142,15 @@ export function setIntentions(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.intentions[dk] = val;
   setDoc(_userDoc('intentions', dk), clean(val));
+}
+
+// ── Reflection ────────────────────────────────────────────────────────────────
+export function getReflection(dk)       { return _cache.reflections[dk] || { text: '' }; }
+export function getReflectionDays()     { return Object.keys(_cache.reflections).filter(k => _cache.reflections[k].text).sort().reverse(); }
+export function setReflection(dk, text) {
+  const val = { text, savedAt: Date.now() };
+  _cache.reflections[dk] = val;
+  setDoc(_userDoc('reflections', dk), clean(val));
 }
 
 // ── Daily Briefing ────────────────────────────────────────────────────────────
