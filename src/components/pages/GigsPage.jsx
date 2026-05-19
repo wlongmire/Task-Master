@@ -173,6 +173,7 @@ function GigItem({ evt, today, refresh, categories }) {
       <div className="gig-date">
         <div className="gig-month">{d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</div>
         <div className="gig-day">{d.getDate()}</div>
+        <div className="gig-weekday">{d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div>
       </div>
       <div className="gig-body">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -313,6 +314,7 @@ function MeetingItem({ mtg, today, refresh, categories }) {
       <div className="gig-date">
         <div className="gig-month">{d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</div>
         <div className="gig-day">{d.getDate()}</div>
+        <div className="gig-weekday">{d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div>
       </div>
       <div className="gig-body">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

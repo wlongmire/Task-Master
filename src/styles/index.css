@@ -316,6 +316,7 @@ html, body {
 .gig-item.meeting .gig-month { color: var(--c-inprogress); }
 .gig-item.meeting { border-left-color: var(--c-inprogress); }
 .gig-day { font-family: var(--font-ui); font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.05; letter-spacing: -0.02em; }
+.gig-weekday { font-family: var(--font-mono); font-size: 7px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dimmer); }
 .gig-body { flex: 1; }
 .gig-name { font-family: var(--font-ui); font-size: 15px; font-weight: 600; color: var(--text); }
 .gig-name.done { text-decoration: line-through; color: var(--text-dim); }
