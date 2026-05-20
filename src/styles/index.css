@@ -163,7 +163,7 @@ html, body {
 .refl-entry { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 34px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .refl-entry:hover .refl-delete { opacity: 1; }
 .refl-time { font-family: var(--font-mono); font-size: 8px; color: var(--text-dimmer); flex-shrink: 0; min-width: 52px; }
-.refl-text { font-family: var(--font-ui); font-size: 13px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.refl-text-inner { font-family: var(--font-ui); font-size: 13px; color: var(--text); display: inline-block; white-space: nowrap; }
 .refl-delete { opacity: 0; background: none; border: none; cursor: pointer; color: var(--text-dimmer); font-size: 15px; padding: 0 0 0 6px; line-height: 1; flex-shrink: 0; transition: color 0.15s, opacity 0.15s; }
 .refl-delete:hover { color: #e05050; }
 .refl-empty { font-family: var(--font-mono); font-size: 10px; color: var(--text-dimmer); padding: 12px; }

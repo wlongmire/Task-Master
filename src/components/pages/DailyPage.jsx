@@ -1,6 +1,31 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { getGrateful, setGrateful, getIntentions, setIntentions, getReflection, addReflectionEntry, deleteReflectionEntry, todayKey } from '../../db';
 
+const _reflRafs = new WeakMap();
+function startReflScroll(wrapper) {
+  const span = wrapper.querySelector('.refl-text-inner');
+  if (!span) return;
+  const max = span.scrollWidth - wrapper.clientWidth;
+  if (max <= 0) return;
+  const duration = 800 + max * 18;
+  let t0 = null;
+  const step = (ts) => {
+    if (!t0) t0 = ts;
+    const p = Math.min((ts - t0) / duration, 1);
+    const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    span.style.transform = `translateX(-${e * max}px)`;
+    if (p < 1) _reflRafs.set(wrapper, requestAnimationFrame(step));
+  };
+  _reflRafs.set(wrapper, requestAnimationFrame(step));
+}
+function stopReflScroll(wrapper) {
+  const raf = _reflRafs.get(wrapper);
+  if (raf) cancelAnimationFrame(raf);
+  _reflRafs.delete(wrapper);
+  const span = wrapper.querySelector('.refl-text-inner');
+  if (span) span.style.transform = 'translateX(0)';
+}
+
 function NotebookSection({ title, colorVar, label, placeholder, hint, value, onChange, readOnly, onArchive }) {
   const taRef = useRef();
   useEffect(() => {
@@ -63,7 +88,7 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onArchiv
   return (
     <section className="section" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div className="section-hd">
-        <span className="section-title" style={{ color: 'var(--c-reflection)' }}>Reflection</span>
+        <span className="section-title" style={{ color: 'var(--c-reflection)' }}>Reflections</span>
         <span className="section-sub">{isToday ? '· log' : '· read-only'}</span>
       </div>
       <div className="notebook" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -88,7 +113,13 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onArchiv
               return (
                 <div key={entry.id} className="refl-entry">
                   <span className="refl-time">{timeStr}</span>
-                  <span className="refl-text" title={entry.text}>{entry.text}</span>
+                  <div
+                    style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
+                    onMouseEnter={e => startReflScroll(e.currentTarget)}
+                    onMouseLeave={e => stopReflScroll(e.currentTarget)}
+                  >
+                    <span className="refl-text-inner">{entry.text}</span>
+                  </div>
                   {isToday && (
                     <button className="refl-delete" onClick={() => onDelete(entry.id)}>×</button>
                   )}
@@ -98,7 +129,13 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onArchiv
             {legacyText && (
               <div className="refl-entry refl-entry-legacy">
                 <span className="refl-time refl-legacy-label">legacy</span>
-                <span className="refl-text" title={legacyText}>{legacyText}</span>
+                <div
+                  style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
+                  onMouseEnter={e => startReflScroll(e.currentTarget)}
+                  onMouseLeave={e => stopReflScroll(e.currentTarget)}
+                >
+                  <span className="refl-text-inner">{legacyText}</span>
+                </div>
               </div>
             )}
           </div>
