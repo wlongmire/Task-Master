@@ -130,6 +130,7 @@ export default function App() {
         </div>
         <div className="mobile-section-nav show-mobile">
           {[
+            { id: 'section-reflections',  label: 'Reflections',  color: 'var(--c-reflection)' },
             { id: 'section-todo-list',    label: 'Todo',         color: 'var(--c-todo)' },
             { id: 'section-inprogress',   label: 'In Progress',  color: 'var(--c-inprogress)' },
             { id: 'section-completed',    label: 'Completed',    color: 'var(--c-completed)' },

@@ -206,6 +206,8 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
             readOnly={!isToday}
             onArchive={() => openArchive('intentions')}
           />
+        </div>
+        <div id="section-reflections">
           <ReflectionLog
             isToday={isToday}
             entries={reflectionData.entries || []}
