@@ -17,7 +17,7 @@ const PAGE_META = {
   daily:  { title: 'Daily',           archiveTab: 'grateful' },
   todo:   { title: 'To Do',           archiveTab: 'activity', subtitle: '· active list + backlog' },
   active: { title: 'Active',          archiveTab: 'activity', subtitle: '· in flight + finished' },
-  gigs:   { title: 'Gigs & Meetings', archiveTab: 'events',   subtitle: '· upcoming · sorted by date' },
+  gigs:   { title: 'Gigs & Engagements', archiveTab: 'events',   subtitle: '· upcoming · sorted by date' },
 };
 
 function useIsMobile() {
@@ -135,7 +135,7 @@ export default function App() {
             { id: 'section-inprogress',   label: 'In Progress',  color: 'var(--c-inprogress)' },
             { id: 'section-completed',    label: 'Completed',    color: 'var(--c-completed)' },
             { id: 'section-gigs-list',    label: 'Gigs',         color: 'var(--c-gigs)' },
-            { id: 'section-meetings-list',label: 'Meetings',     color: 'var(--c-inprogress)' },
+            { id: 'section-meetings-list',label: 'Engagements',  color: 'var(--c-inprogress)' },
           ].map(({ id, label, color }) => (
             <button key={id} className="mobile-nav-pill" onClick={() => {
               document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });

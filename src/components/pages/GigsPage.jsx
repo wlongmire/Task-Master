@@ -50,8 +50,8 @@ export default function GigsPage({ refresh, tick, openArchive }) {
         </section>
         <section className="section" id="section-meetings-list">
           <div className="section-hd">
-            <span className="section-title inprogress">Meetings</span>
-            <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px', background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={() => setAddingMeeting(a => !a)}>+ New Meeting</button>
+            <span className="section-title inprogress">Engagements</span>
+            <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px', background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={() => setAddingMeeting(a => !a)}>+ New Engagement</button>
           </div>
           <MeetingsList meetings={meetings} today={today} refresh={refresh} adding={addingMeeting} setAdding={setAddingMeeting} categories={categories} />
         </section>

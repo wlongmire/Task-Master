@@ -43,7 +43,7 @@ export default function TopicPopup({ topicId, onClose, tick, archived = false, o
           <div style={{ display: 'flex', gap: 16 }}>
             <Pill count={tasks.length}    label="tasks"    color="var(--c-todo)" />
             <Pill count={gigs.length}     label="gigs"     color="var(--c-gigs)" />
-            <Pill count={meetings.length} label="meetings" color="var(--c-inprogress)" />
+            <Pill count={meetings.length} label="engagements" color="var(--c-inprogress)" />
           </div>
           {archived ? (
             <div style={{ display: 'flex', gap: 8 }}>
@@ -100,7 +100,7 @@ export default function TopicPopup({ topicId, onClose, tick, archived = false, o
           </Section>
 
           {/* Meetings */}
-          <Section title="Meetings">
+          <Section title="Engagements">
             {meetings.length === 0
               ? <Empty>No meetings in this topic.</Empty>
               : meetings.map(m => (

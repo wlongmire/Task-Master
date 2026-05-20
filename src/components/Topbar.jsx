@@ -151,7 +151,7 @@ export default function Topbar({ viewDay, tick }) {
           />
           <StatDivider />
           <TaskWidget
-            label="Next Meeting"
+            label="Next Engagement"
             name={nextMeeting?.name}
             sub={nextMeeting ? dueSub(nextMeeting.date, today) : null}
             color="var(--c-inprogress)"
@@ -183,7 +183,7 @@ export default function Topbar({ viewDay, tick }) {
           />
           <StatDivider />
           <TaskWidget
-            label="Next Meeting"
+            label="Next Engagement"
             name={nextMeeting?.name}
             sub={nextMeeting ? dueSub(nextMeeting.date, today) : null}
             color="var(--c-inprogress)"
@@ -197,7 +197,7 @@ export default function Topbar({ viewDay, tick }) {
           <StatDivider />
           <Stat num={stats.done}              label="Done"     cls="completed" />
           <StatDivider />
-          <Stat num={stats.meetingsAhead} label="Meetings" cls="meetings" />
+          <Stat num={stats.meetingsAhead} label="Engagements" cls="meetings" />
         </div>
       </div>
     </header>
