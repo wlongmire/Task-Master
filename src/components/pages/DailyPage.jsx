@@ -183,7 +183,7 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
   return (
     <div className="page">
       <div className="page-grid single">
-        <div className="hide-mobile" style={{ display: 'contents' }}>
+        <div className="hide-mobile">
           <NotebookSection
             title="Gratitudes"
             colorVar="--c-grateful"

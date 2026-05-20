@@ -103,7 +103,7 @@ html, body {
 .page-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .page-grid.single { grid-template-columns: 1fr; }
 
-.section { background: transparent; display: flex; flex-direction: column; min-width: 0; }
+.section { background: transparent; display: flex; flex-direction: column; min-width: 0; width: 100%; }
 .section-hd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
 .section-title {
   font-family: var(--font-ui); font-size: 17px; font-weight: 600;
@@ -126,7 +126,7 @@ html, body {
   border-radius: var(--radius);
   padding: 22px 28px 18px;
   flex: 1; display: flex; flex-direction: column;
-  min-height: 280px;
+  min-height: 280px; min-width: 0; width: 100%;
   overflow: hidden;
 }
 .nb-label {
@@ -135,9 +135,9 @@ html, body {
   color: var(--text-dimmer); margin-bottom: 10px; font-weight: 500;
 }
 .nb-area {
-  width: 100%; background: transparent; border: none; outline: none;
+  width: 100%; max-width: 100%; background: transparent; border: none; outline: none;
   resize: none; font-family: var(--font-nb); font-size: 16px;
-  line-height: 1.8; color: var(--text); flex: 1; min-height: 180px;
+  line-height: 1.8; color: var(--text); flex: 1; min-height: 180px; min-width: 0;
 }
 .nb-area::placeholder { color: var(--text-dimmer); }
 .nb-area[readonly] { opacity: 0.6; }
