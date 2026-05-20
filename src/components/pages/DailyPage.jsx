@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { getGrateful, setGrateful, getIntentions, setIntentions, getReflection, addReflectionEntry, deleteReflectionEntry, updateReflectionEntry, todayKey } from '../../db';
+import { getGrateful, setGrateful, getIntentions, setIntentions, getReflection, addReflectionEntry, deleteReflectionEntry, todayKey } from '../../db';
 
 function NotebookSection({ title, colorVar, label, placeholder, hint, value, onChange, readOnly, onArchive }) {
   const taRef = useRef();
@@ -35,11 +35,9 @@ function NotebookSection({ title, colorVar, label, placeholder, hint, value, onC
   );
 }
 
-function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onUpdate, onArchive }) {
+function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onArchive }) {
   const [draft, setDraft] = useState('');
   const draftRef = useRef();
-  const [editingId, setEditingId] = useState(null);
-  const [editText, setEditText] = useState('');
 
   useEffect(() => {
     if (draftRef.current) {
@@ -59,27 +57,16 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onUpdate
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSubmit(); }
   };
 
-  const startEdit = (entry) => { setEditingId(entry.id); setEditText(entry.text); };
-
-  const commitEdit = () => {
-    if (editText.trim()) onUpdate(editingId, editText.trim());
-    setEditingId(null); setEditText('');
-  };
-
-  const handleEditKey = (e) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commitEdit(); }
-    if (e.key === 'Escape') { setEditingId(null); setEditText(''); }
-  };
-
   const sorted = [...entries].sort((a, b) => b.createdAt - a.createdAt);
+  const hasLogs = sorted.length > 0 || legacyText;
 
   return (
-    <section className="section">
+    <section className="section" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div className="section-hd">
         <span className="section-title" style={{ color: 'var(--c-reflection)' }}>Reflection</span>
         <span className="section-sub">{isToday ? '· log' : '· read-only'}</span>
       </div>
-      <div className="notebook" style={{ padding: 0 }}>
+      <div className="notebook" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1 }}>
         {isToday && (
           <div className="refl-compose">
             <textarea
@@ -94,48 +81,30 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onUpdate
             <button className="refl-submit" onClick={handleSubmit} disabled={!draft.trim()}>Log ↵</button>
           </div>
         )}
-        <div className="refl-entries">
-          {sorted.length === 0 && !legacyText && (
-            <div className="refl-empty">{isToday ? 'No entries yet — drop a note above.' : 'No entries for this day.'}</div>
-          )}
-          {sorted.map(entry => {
-            const timeStr = new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-            const isEditing = editingId === entry.id;
-            return (
-              <div key={entry.id} className="refl-entry">
-                <span className="refl-time">{timeStr}</span>
-                {isEditing ? (
-                  <textarea
-                    className="refl-edit-area"
-                    value={editText}
-                    onChange={e => setEditText(e.target.value)}
-                    onKeyDown={handleEditKey}
-                    onBlur={commitEdit}
-                    onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                    ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                    autoFocus
-                  />
-                ) : (
-                  <span
-                    className={`refl-text${isToday ? ' refl-text-editable' : ''}`}
-                    onClick={isToday ? () => startEdit(entry) : undefined}
-                  >{entry.text}</span>
-                )}
-                {isToday && !isEditing && (
-                  <button className="refl-delete" onClick={() => onDelete(entry.id)}>×</button>
-                )}
+        {hasLogs && (
+          <div className="refl-entries">
+            {sorted.map(entry => {
+              const timeStr = new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+              return (
+                <div key={entry.id} className="refl-entry">
+                  <span className="refl-time">{timeStr}</span>
+                  <span className="refl-text" title={entry.text}>{entry.text}</span>
+                  {isToday && (
+                    <button className="refl-delete" onClick={() => onDelete(entry.id)}>×</button>
+                  )}
+                </div>
+              );
+            })}
+            {legacyText && (
+              <div className="refl-entry refl-entry-legacy">
+                <span className="refl-time refl-legacy-label">legacy</span>
+                <span className="refl-text" title={legacyText}>{legacyText}</span>
               </div>
-            );
-          })}
-          {legacyText && (
-            <div className="refl-entry refl-entry-legacy">
-              <span className="refl-time refl-legacy-label">legacy</span>
-              <span className="refl-text">{legacyText}</span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
         <div className="nb-footer" style={{ padding: '8px 12px' }}>
-          <span className="nb-hint">{isToday ? 'Cmd+Enter to log · click entry to edit' : 'Read-only — past day'}</span>
+          <span className="nb-hint">{isToday ? 'Cmd+Enter to log' : 'Read-only — past day'}</span>
           <button className="nb-link" onClick={onArchive}>History →</button>
         </div>
       </div>
@@ -173,7 +142,6 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
 
   const handleAddEntry    = (text) => { addReflectionEntry(viewDay, text); refresh(); };
   const handleDeleteEntry = (id)   => { deleteReflectionEntry(viewDay, id); refresh(); };
-  const handleUpdateEntry = (id, newText) => { updateReflectionEntry(viewDay, id, newText); refresh(); };
 
   return (
     <div className="page">
@@ -207,7 +175,6 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
             legacyText={reflectionData._legacyText}
             onAdd={handleAddEntry}
             onDelete={handleDeleteEntry}
-            onUpdate={handleUpdateEntry}
             onArchive={() => openArchive('reflections')}
           />
         </div>
