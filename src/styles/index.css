@@ -127,6 +127,7 @@ html, body {
   padding: 22px 28px 18px;
   flex: 1; display: flex; flex-direction: column;
   min-height: 280px;
+  overflow: hidden;
 }
 .nb-label {
   font-family: var(--font-mono); font-size: 8px;
@@ -154,12 +155,12 @@ html, body {
 
 /* ── Reflection Log ── */
 .refl-compose { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); flex: 1; min-width: 0; overflow: hidden; }
-.refl-draft { flex: 1; min-width: 0; width: 0; font-family: var(--font-ui); font-size: 13px; color: var(--text); background: none; border: none; outline: none; resize: none; min-height: 98px; line-height: 1.5; align-self: stretch; }
+.refl-draft { flex: 1; min-width: 0; width: 0; max-width: 100%; font-family: var(--font-ui); font-size: 13px; color: var(--text); background: none; border: none; outline: none; resize: none; min-height: 98px; line-height: 1.5; align-self: stretch; }
 .refl-draft::placeholder { color: var(--text-dimmer); }
 .refl-submit { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; color: var(--c-reflection); background: none; border: 1px solid var(--c-reflection); border-radius: 3px; padding: 3px 8px; cursor: pointer; flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; align-self: flex-end; }
 .refl-submit:hover { opacity: 1; }
 .refl-submit:disabled { opacity: 0.3; cursor: default; }
-.refl-entries { display: flex; flex-direction: column; max-height: calc(5 * 34px); overflow-y: auto; }
+.refl-entries { display: flex; flex-direction: column; max-height: calc(5 * 34px); overflow-y: auto; overflow-x: hidden; }
 .refl-entry { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 34px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .refl-entry:hover .refl-delete { opacity: 1; }
 .refl-time { font-family: var(--font-mono); font-size: 8px; color: var(--text-dimmer); flex-shrink: 0; min-width: 52px; }
