@@ -118,6 +118,7 @@ export default function App() {
         onSignOut={() => signOut(auth)}
         mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)}
       />
+      
       <main className="main">
         <Topbar viewDay={viewDay} tick={tick} />
         <div className="page-header hide-mobile">
@@ -129,7 +130,6 @@ export default function App() {
         </div>
         <div className="mobile-section-nav show-mobile">
           {[
-            { id: 'section-backlog',      label: 'Backlog',      color: 'var(--c-backlog)' },
             { id: 'section-todo-list',    label: 'Todo',         color: 'var(--c-todo)' },
             { id: 'section-inprogress',   label: 'In Progress',  color: 'var(--c-inprogress)' },
             { id: 'section-completed',    label: 'Completed',    color: 'var(--c-completed)' },
