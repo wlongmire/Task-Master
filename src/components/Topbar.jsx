@@ -175,10 +175,11 @@ export default function Topbar({ viewDay, tick }) {
         </div>
         <div className="show-mobile" style={{ display: 'none', alignItems: 'center', gap: 20, flex: 1 }}>
           <TaskWidget
-            label="Next Deadline"
-            name={stats.nextDeadline?.text}
-            sub={stats.nextDeadline ? dueSub(stats.nextDeadline.dueDate, today) : null}
-            color="var(--c-todo)"
+            label="Next Gig"
+            name={nextGig?.name}
+            sub={nextGig ? dueSub(nextGig.date, today) : null}
+            color="var(--c-gigs)"
+            dot={nextGig ? Math.round((new Date(nextGig.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) <= 2 : false}
           />
           <StatDivider />
           <TaskWidget
