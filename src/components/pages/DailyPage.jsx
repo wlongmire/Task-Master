@@ -89,7 +89,7 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onUpdate
               value={draft}
               onChange={e => setDraft(e.target.value)}
               onKeyDown={handleDraftKey}
-              rows={1}
+              rows={5}
             />
             <button className="refl-submit" onClick={handleSubmit} disabled={!draft.trim()}>Log ↵</button>
           </div>

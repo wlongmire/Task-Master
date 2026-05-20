@@ -154,7 +154,7 @@ html, body {
 
 /* ── Reflection Log ── */
 .refl-compose { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-.refl-draft { flex: 1; font-family: var(--font-ui); font-size: 13px; color: var(--text); background: none; border: none; outline: none; resize: none; min-height: 22px; line-height: 1.5; }
+.refl-draft { flex: 1; font-family: var(--font-ui); font-size: 13px; color: var(--text); background: none; border: none; outline: none; resize: none; min-height: 98px; line-height: 1.5; }
 .refl-draft::placeholder { color: var(--text-dimmer); }
 .refl-submit { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; color: var(--c-reflection); background: none; border: 1px solid var(--c-reflection); border-radius: 3px; padding: 3px 8px; cursor: pointer; flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; }
 .refl-submit:hover { opacity: 1; }
