@@ -85,7 +85,7 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onUpdate
             <textarea
               ref={draftRef}
               className="refl-draft"
-              placeholder="Add a note..."
+              placeholder="What's happening, what you're feeling, what you'd do differently..."
               value={draft}
               onChange={e => setDraft(e.target.value)}
               onKeyDown={handleDraftKey}
