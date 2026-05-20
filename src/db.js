@@ -145,8 +145,42 @@ export function setIntentions(dk, text) {
 }
 
 // ── Reflection ────────────────────────────────────────────────────────────────
-export function getReflection(dk)       { return _cache.reflections[dk] || { text: '' }; }
-export function getReflectionDays()     { return Object.keys(_cache.reflections).filter(k => _cache.reflections[k].text).sort().reverse(); }
+export function getReflection(dk) {
+  const doc = _cache.reflections[dk];
+  if (!doc) return { entries: [] };
+  if (doc.entries) return doc;
+  // Legacy doc: { text, savedAt } — surface as _legacyText, no entries
+  return { entries: [], _legacyText: doc.text };
+}
+export function getReflectionDays() {
+  return Object.keys(_cache.reflections)
+    .filter(k => {
+      const doc = _cache.reflections[k];
+      return (doc.entries && doc.entries.length > 0) || doc.text;
+    })
+    .sort().reverse();
+}
+export function addReflectionEntry(dk, text) {
+  const doc = _cache.reflections[dk] || { entries: [] };
+  const entries = [...(doc.entries || []), { id: crypto.randomUUID(), text, createdAt: Date.now() }];
+  const val = { entries, savedAt: Date.now() };
+  _cache.reflections[dk] = val;
+  setDoc(_userDoc('reflections', dk), clean(val));
+}
+export function deleteReflectionEntry(dk, id) {
+  const doc = _cache.reflections[dk];
+  if (!doc || !doc.entries) return;
+  const val = { entries: doc.entries.filter(e => e.id !== id), savedAt: Date.now() };
+  _cache.reflections[dk] = val;
+  setDoc(_userDoc('reflections', dk), clean(val));
+}
+export function updateReflectionEntry(dk, id, newText) {
+  const doc = _cache.reflections[dk];
+  if (!doc || !doc.entries) return;
+  const val = { entries: doc.entries.map(e => e.id === id ? { ...e, text: newText } : e), savedAt: Date.now() };
+  _cache.reflections[dk] = val;
+  setDoc(_userDoc('reflections', dk), clean(val));
+}
 export function setReflection(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.reflections[dk] = val;

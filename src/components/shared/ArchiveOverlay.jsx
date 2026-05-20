@@ -214,11 +214,25 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
       ? <div className="archive-empty">No reflection entries yet.</div>
       : days.map(dk => {
           const entry = getReflection(dk);
-          if (!entry.text) return null;
+          const hasEntries = entry.entries && entry.entries.length > 0;
+          const hasLegacy  = entry._legacyText;
+          if (!hasEntries && !hasLegacy) return null;
+          const sorted = hasEntries ? [...entry.entries].sort((a, b) => a.createdAt - b.createdAt) : [];
           return (
-            <div key={dk}>
+            <div key={dk} style={{ marginBottom: 18 }}>
               <div className="archive-group-label">{formatDateShort(dk)}</div>
-              <div className="archive-entry">{entry.text}</div>
+              {hasLegacy && (
+                <div className="archive-entry" style={{ opacity: 0.6 }}>{entry._legacyText}</div>
+              )}
+              {sorted.map(e => {
+                const timeStr = new Date(e.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                return (
+                  <div key={e.id} style={{ display: 'flex', gap: 10, padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0, paddingTop: 2, minWidth: 52 }}>{timeStr}</span>
+                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text)', flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>{e.text}</span>
+                  </div>
+                );
+              })}
             </div>
           );
         });

@@ -152,6 +152,27 @@ html, body {
 }
 .nb-link:hover { color: var(--text); border-color: var(--text-dim); }
 
+/* ── Reflection Log ── */
+.refl-compose { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.refl-draft { flex: 1; font-family: var(--font-ui); font-size: 13px; color: var(--text); background: none; border: none; outline: none; resize: none; min-height: 22px; line-height: 1.5; }
+.refl-draft::placeholder { color: var(--text-dimmer); }
+.refl-submit { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; color: var(--c-reflection); background: none; border: 1px solid var(--c-reflection); border-radius: 3px; padding: 3px 8px; cursor: pointer; flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; }
+.refl-submit:hover { opacity: 1; }
+.refl-submit:disabled { opacity: 0.3; cursor: default; }
+.refl-entries { display: flex; flex-direction: column; }
+.refl-entry { display: flex; align-items: flex-start; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--border); position: relative; }
+.refl-entry:hover .refl-delete { opacity: 1; }
+.refl-time { font-family: var(--font-mono); font-size: 8px; color: var(--text-dimmer); flex-shrink: 0; padding-top: 3px; min-width: 52px; }
+.refl-text { font-family: var(--font-ui); font-size: 13px; color: var(--text); flex: 1; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+.refl-text-editable { cursor: text; }
+.refl-text-editable:hover { color: var(--c-reflection); }
+.refl-edit-area { flex: 1; font-family: var(--font-ui); font-size: 13px; color: var(--text); background: var(--surface2); border: 1px solid var(--c-reflection); border-radius: 3px; outline: none; resize: none; padding: 2px 6px; line-height: 1.5; }
+.refl-delete { opacity: 0; background: none; border: none; cursor: pointer; color: var(--text-dimmer); font-size: 15px; padding: 0 0 0 6px; line-height: 1; flex-shrink: 0; transition: color 0.15s, opacity 0.15s; }
+.refl-delete:hover { color: #e05050; }
+.refl-empty { font-family: var(--font-mono); font-size: 10px; color: var(--text-dimmer); padding: 12px; }
+.refl-legacy-label { opacity: 0.7; }
+.refl-entry-legacy { opacity: 0.6; }
+
 /* ── Outliner (dark task card) ── */
 .outliner {
   background: var(--surface2);
