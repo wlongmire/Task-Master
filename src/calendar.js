@@ -75,7 +75,16 @@ function toGCalEvent(item) {
   if (item.location) ev.location    = item.location;
 
   if (item.time) {
-    const start = new Date(`${item.date}T${item.time}:00`);
+    const timeNorm = item.time.slice(0, 5); // Normalize to HH:MM (handles HH:MM:SS from some browsers)
+    const start = new Date(`${item.date}T${timeNorm}:00`);
+    if (isNaN(start.getTime())) {
+      console.warn('toGCalEvent: invalid datetime', item.date, item.time);
+      ev.start = { date: item.date };
+      const next = new Date(item.date + 'T00:00:00');
+      next.setDate(next.getDate() + 1);
+      ev.end = { date: next.toISOString().slice(0, 10) };
+      return ev;
+    }
     const end   = new Date(start.getTime() + 60 * 60 * 1000);
     const fmt   = d =>
       `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` +
