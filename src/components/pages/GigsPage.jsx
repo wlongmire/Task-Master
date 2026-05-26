@@ -142,9 +142,9 @@ function GigItem({ evt, today, refresh, categories }) {
           <input autoFocus value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
             style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }} />
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} onBlur={e => setDate(e.target.value)}
             style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
-          <input type="time" value={time} onChange={e => setTime(e.target.value)}
+          <input type="time" value={time} onChange={e => setTime(e.target.value)} onBlur={e => setTime(e.target.value)}
             style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: time ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -281,9 +281,9 @@ function MeetingItem({ mtg, today, refresh, categories }) {
           <input autoFocus value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
             style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }} />
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} onBlur={e => setDate(e.target.value)}
             style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
-          <input type="time" value={time} onChange={e => setTime(e.target.value)}
+          <input type="time" value={time} onChange={e => setTime(e.target.value)} onBlur={e => setTime(e.target.value)}
             style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 4, color: time ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }} />
         </div>
         <input placeholder="Location or link (optional)..." value={location} onChange={e => setLocation(e.target.value)}
@@ -394,6 +394,7 @@ function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime,
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
+          onBlur={e => setDate(e.target.value)}
           style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }}
         />
         {setTime !== undefined && (
@@ -401,6 +402,7 @@ function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime,
             type="time"
             value={time}
             onChange={e => setTime(e.target.value)}
+            onBlur={e => setTime(e.target.value)}
             style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: time ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }}
           />
         )}
