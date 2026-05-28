@@ -189,6 +189,7 @@ export function getGratefulDays()     { return Object.keys(_cache.grateful).filt
 export function setGrateful(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.grateful[dk] = val;
+  _persistToLS();
   setDoc(_userDoc('grateful', dk), clean(val));
 }
 
@@ -198,6 +199,7 @@ export function getIntentionsDays()     { return Object.keys(_cache.intentions).
 export function setIntentions(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.intentions[dk] = val;
+  _persistToLS();
   setDoc(_userDoc('intentions', dk), clean(val));
 }
 
@@ -222,6 +224,7 @@ export function addReflectionEntry(dk, text) {
   const entries = [...(doc.entries || []), { id: crypto.randomUUID(), text, createdAt: Date.now() }];
   const val = { entries, savedAt: Date.now() };
   _cache.reflections[dk] = val;
+  _persistToLS();
   setDoc(_userDoc('reflections', dk), clean(val));
 }
 export function deleteReflectionEntry(dk, id) {
@@ -229,6 +232,7 @@ export function deleteReflectionEntry(dk, id) {
   if (!doc || !doc.entries) return;
   const val = { entries: doc.entries.filter(e => e.id !== id), savedAt: Date.now() };
   _cache.reflections[dk] = val;
+  _persistToLS();
   setDoc(_userDoc('reflections', dk), clean(val));
 }
 export function updateReflectionEntry(dk, id, newText) {
@@ -236,11 +240,13 @@ export function updateReflectionEntry(dk, id, newText) {
   if (!doc || !doc.entries) return;
   const val = { entries: doc.entries.map(e => e.id === id ? { ...e, text: newText } : e), savedAt: Date.now() };
   _cache.reflections[dk] = val;
+  _persistToLS();
   setDoc(_userDoc('reflections', dk), clean(val));
 }
 export function setReflection(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.reflections[dk] = val;
+  _persistToLS();
   setDoc(_userDoc('reflections', dk), clean(val));
 }
 
@@ -249,6 +255,7 @@ export function getDailyBriefing(dk)          { return _cache.briefings[dk] || {
 export function setDailyBriefing(dk, updates) {
   const val = { ...(_cache.briefings[dk] || {}), ...updates };
   _cache.briefings[dk] = val;
+  _persistToLS();
   setDoc(_userDoc('briefings', dk), clean(val));
 }
 
