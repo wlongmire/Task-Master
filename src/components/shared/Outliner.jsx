@@ -42,7 +42,7 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
         const row = el.closest('.o-row') ?? el;
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
-        el.focus();
+        el.focus({ preventScroll: true });
         const len = el.value?.length ?? 0;
         try { el.setSelectionRange(len, len); } catch (_) {}
       }
