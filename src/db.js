@@ -20,11 +20,12 @@ function clean(obj) {
 }
 
 // ── Local cache ───────────────────────────────────────────────────────────────
-let _uid       = null;
-let _refreshFn = null;
-let _onReadyFn = null;
-let _unsubs    = [];
-let _loaded    = new Set();
+let _uid         = null;
+let _refreshFn   = null;
+let _onReadyFn   = null;
+let _unsubs      = [];
+let _loaded      = new Set();
+let _readyCalled = false; // guards onReady so it fires at most once per session
 
 const COLLECTIONS = ['tasks', 'events', 'meetings', 'categories', 'grateful', 'intentions', 'briefings', 'reflections'];
 
@@ -33,6 +34,34 @@ let _cache = {
   grateful: {}, intentions: {}, briefings: {}, reflections: {},
 };
 
+// ── LocalStorage offline cache ────────────────────────────────────────────────
+// After every Firestore sync we snapshot _cache to localStorage so that if the
+// next page-load times out (no network / Firebase down) the app can still show
+// the most recent data instead of a blank screen.
+const _lsKey = uid => `tm_offline_${uid}`;
+
+function _persistToLS() {
+  if (!_uid) return;
+  try {
+    localStorage.setItem(_lsKey(_uid), JSON.stringify({ cache: _cache, savedAt: Date.now() }));
+  } catch (e) {
+    console.warn('[TaskMaster] localStorage persist failed:', e);
+  }
+}
+
+function _loadFromLS(uid) {
+  try {
+    const raw = localStorage.getItem(_lsKey(uid));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Basic shape guard — if the stored object is missing core keys, ignore it
+    if (!parsed?.cache?.tasks) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 function _userCol(name)       { return collection(db, 'users', _uid, name); }
 function _userDoc(col, docId) { return doc(db, 'users', _uid, col, docId); }
 
@@ -40,20 +69,29 @@ function _markLoaded(name) {
   const wasReady = _loaded.size >= COLLECTIONS.length;
   _loaded.add(name);
   const nowReady = _loaded.size >= COLLECTIONS.length;
-  if (nowReady && !wasReady) { _onReadyFn?.(); _refreshFn?.(); }
-  else if (nowReady)           { _refreshFn?.(); }
+  if (nowReady && !wasReady) {
+    _persistToLS(); // snapshot fresh data so offline fallback stays current
+    if (!_readyCalled) { _readyCalled = true; _onReadyFn?.(); }
+    _refreshFn?.();
+  } else if (nowReady) {
+    _persistToLS(); // keep snapshot fresh on subsequent Firestore updates
+    _refreshFn?.();
+  }
 }
 
 // ── Init / Cleanup ────────────────────────────────────────────────────────────
 export function initDB(uid, onRefresh, onReady) {
   // tear down any previous session
   _unsubs.forEach(fn => fn());
-  _unsubs    = [];
-  _loaded    = new Set();
-  _uid       = uid;
-  _refreshFn = onRefresh;
-  _onReadyFn = onReady;
-  _cache     = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
+  _unsubs      = [];
+  _loaded      = new Set();
+  _readyCalled = false;
+  _uid         = uid;
+  // Wrap onRefresh so every cache mutation automatically updates localStorage.
+  // This keeps the offline snapshot fresh without touching every write function.
+  _refreshFn   = () => { onRefresh(); _persistToLS(); };
+  _onReadyFn   = onReady;
+  _cache       = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
 
   // Array collections
   for (const col of ['tasks', 'events', 'meetings', 'categories']) {
@@ -99,10 +137,29 @@ export function initDB(uid, onRefresh, onReady) {
   document.addEventListener('visibilitychange', resync);
   window.addEventListener('online', resync);
 
+  // Offline fallback — if Firestore hasn't delivered all 8 collections within
+  // 8 seconds (slow network, Firebase outage, etc.), load the most recent
+  // localStorage snapshot so the app isn't blank. The Firestore listeners keep
+  // running; when they fire they overwrite the cache and refresh the UI.
+  const offlineTimer = setTimeout(() => {
+    if (_readyCalled) return; // Firestore already loaded — nothing to do
+    const snap = _loadFromLS(uid);
+    if (!snap) return;        // first-ever load or no stored data
+    _cache = snap.cache;
+    _readyCalled = true;
+    _onReadyFn?.();
+    _refreshFn?.();
+    console.warn(
+      '[Task Master] Firebase timeout — showing offline cache from',
+      new Date(snap.savedAt).toLocaleString(),
+    );
+  }, 8000);
+  _unsubs.push(() => clearTimeout(offlineTimer));
+
   return () => {
     _unsubs.forEach(fn => fn());
     _unsubs = []; _uid = null; _refreshFn = null; _onReadyFn = null;
-    _loaded = new Set();
+    _loaded = new Set(); _readyCalled = false;
     document.removeEventListener('visibilitychange', resync);
     window.removeEventListener('online', resync);
   };
