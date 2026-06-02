@@ -681,6 +681,18 @@ function TaskDetailModal({ task, listState, onAction, onClose }) {
 
 function DetailPanel({ task, onAction }) {
   const LOG_TYPE_LABELS = { created: 'Created', started: 'Started', progress: 'Progress', done: 'Done' };
+  const descRef  = useRef(task.description || '');
+  const dirtyRef = useRef(false);
+
+  // Flush unsaved description when the panel unmounts (e.g. the user clicked
+  // away from the task row before onBlur could fire).
+  useEffect(() => {
+    return () => {
+      if (dirtyRef.current) {
+        updateTask(task.id, { description: descRef.current.trim() || null });
+      }
+    };
+  }, [task.id]);
 
   return (
     <div className="detail-panel">
@@ -689,7 +701,13 @@ function DetailPanel({ task, onAction }) {
         rows={2}
         placeholder="Add description..."
         defaultValue={task.description || ''}
-        onBlur={e => updateTask(task.id, { description: e.target.value })}
+        onChange={e => { descRef.current = e.target.value; dirtyRef.current = true; }}
+        onBlur={e => {
+          if (dirtyRef.current) {
+            updateTask(task.id, { description: e.target.value.trim() || null });
+            dirtyRef.current = false;
+          }
+        }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
