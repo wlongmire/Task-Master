@@ -417,7 +417,7 @@ export function deleteCategory(id) {
 export function getEvents() { return [..._cache.events]; }
 
 export function addEvent(evt) {
-  const newEvt = { id: genId(), archived: false, done: false, ...evt };
+  const newEvt = { id: genId(), archived: false, done: false, log: [], ...evt };
   _cache.events = [..._cache.events, newEvt];
   setDoc(_userDoc('events', newEvt.id), clean(newEvt));
   _refreshFn?.();
@@ -430,6 +430,14 @@ export function updateEvent(id, updates) {
   updateDoc(_userDoc('events', id), clean(updates));
   _refreshFn?.();
 }
+export function addEventLogEntry(id, { type, note = null }) {
+  const idx = _cache.events.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  const entry      = { id: String(Date.now()), type, note, loggedAt: Date.now() };
+  const updatedLog = [...(_cache.events[idx].log || []), entry];
+  _cache.events[idx] = { ..._cache.events[idx], log: updatedLog };
+  updateDoc(_userDoc('events', id), clean({ log: updatedLog }));
+}
 export function archiveEvent(id) { updateEvent(id, { archived: true }); }
 export function deleteEvent(id)  {
   _cache.events = _cache.events.filter(e => e.id !== id);
@@ -441,7 +449,7 @@ export function deleteEvent(id)  {
 export function getMeetings() { return [..._cache.meetings]; }
 
 export function addMeeting(mtg) {
-  const newMtg = { id: genId(), archived: false, done: false, ...mtg };
+  const newMtg = { id: genId(), archived: false, done: false, log: [], ...mtg };
   _cache.meetings = [..._cache.meetings, newMtg];
   setDoc(_userDoc('meetings', newMtg.id), clean(newMtg));
   _refreshFn?.();
@@ -453,6 +461,14 @@ export function updateMeeting(id, updates) {
   _cache.meetings[idx] = { ..._cache.meetings[idx], ...updates };
   updateDoc(_userDoc('meetings', id), clean(updates));
   _refreshFn?.();
+}
+export function addMeetingLogEntry(id, { type, note = null }) {
+  const idx = _cache.meetings.findIndex(m => m.id === id);
+  if (idx === -1) return;
+  const entry      = { id: String(Date.now()), type, note, loggedAt: Date.now() };
+  const updatedLog = [...(_cache.meetings[idx].log || []), entry];
+  _cache.meetings[idx] = { ..._cache.meetings[idx], log: updatedLog };
+  updateDoc(_userDoc('meetings', id), clean({ log: updatedLog }));
 }
 export function archiveMeeting(id) { updateMeeting(id, { archived: true }); }
 export function deleteMeeting(id)  {

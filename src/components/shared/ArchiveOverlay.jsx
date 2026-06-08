@@ -246,14 +246,20 @@ export default function ArchiveOverlay({ open, tab, setTab, onClose, tick }) {
           const timeStr = item.time
             ? new Date(`1970-01-01T${item.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
             : null;
+          const completionNote = (item.log || []).find(e => e.type === 'completed' && e.note)?.note;
           return (
-            <div key={item.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: item.kind === 'gig' ? 'var(--c-gigs)' : 'var(--c-inprogress)', flexShrink: 0, width: 52 }}>{item.kind}</span>
-              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: item.archived ? 'var(--text-dim)' : 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: item.done ? 'line-through' : 'none' }}>{item.name}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', flexShrink: 0 }}>
-                {dateStr}{timeStr ? ` · ${timeStr}` : ''}
-              </span>
-              {item.archived && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0 }}>archived</span>}
+            <div key={item.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', color: item.kind === 'gig' ? 'var(--c-gigs)' : 'var(--c-inprogress)', flexShrink: 0, width: 52 }}>{item.kind}</span>
+                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: item.archived ? 'var(--text-dim)' : 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: item.done ? 'line-through' : 'none' }}>{item.name}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dimmer)', flexShrink: 0 }}>
+                  {dateStr}{timeStr ? ` · ${timeStr}` : ''}
+                </span>
+                {item.archived && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-dimmer)', flexShrink: 0 }}>archived</span>}
+              </div>
+              {completionNote && (
+                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-dim)', fontStyle: 'italic', paddingLeft: 62, marginTop: 2 }}>{completionNote}</div>
+              )}
             </div>
           );
         });

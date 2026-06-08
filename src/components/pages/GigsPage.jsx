@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { getEvents, addEvent, updateEvent, archiveEvent, deleteEvent, getMeetings, addMeeting, updateMeeting, archiveMeeting, deleteMeeting, getCategories, todayKey } from '../../db';
+import { getEvents, addEvent, updateEvent, addEventLogEntry, archiveEvent, deleteEvent, getMeetings, addMeeting, updateMeeting, addMeetingLogEntry, archiveMeeting, deleteMeeting, getCategories, todayKey } from '../../db';
 import { syncToCalendar, removeFromCalendar, calendarReady } from '../../calendar';
 
 function daysUntil(dateStr, today) {
@@ -23,7 +23,7 @@ async function pushToCalendar(item, addToCouples, saveFn) {
   }
 }
 
-export default function GigsPage({ refresh, tick, openArchive }) {
+export default function GigsPage({ refresh, tick, openArchive, openLogPopup }) {
   const today = todayKey();
   const [addingGig, setAddingGig] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
@@ -46,14 +46,14 @@ export default function GigsPage({ refresh, tick, openArchive }) {
             <span className="section-title gigs">Gigs</span>
             <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px' }} onClick={() => setAddingGig(a => !a)}>+ New Gig</button>
           </div>
-          <GigsList gigs={gigs} today={today} refresh={refresh} adding={addingGig} setAdding={setAddingGig} categories={categories} />
+          <GigsList gigs={gigs} today={today} refresh={refresh} adding={addingGig} setAdding={setAddingGig} categories={categories} openLogPopup={openLogPopup} />
         </section>
         <section className="section" id="section-meetings-list">
           <div className="section-hd">
             <span className="section-title inprogress">Engagements</span>
             <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px', background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={() => setAddingMeeting(a => !a)}>+ New Engagement</button>
           </div>
-          <MeetingsList meetings={meetings} today={today} refresh={refresh} adding={addingMeeting} setAdding={setAddingMeeting} categories={categories} />
+          <MeetingsList meetings={meetings} today={today} refresh={refresh} adding={addingMeeting} setAdding={setAddingMeeting} categories={categories} openLogPopup={openLogPopup} />
         </section>
       </div>
     </div>
@@ -62,7 +62,7 @@ export default function GigsPage({ refresh, tick, openArchive }) {
 
 // ── Gigs ──────────────────────────────────────────────────────────────────────
 
-function GigsList({ gigs, today, refresh, adding, setAdding, categories }) {
+function GigsList({ gigs, today, refresh, adding, setAdding, categories, openLogPopup }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -96,7 +96,7 @@ function GigsList({ gigs, today, refresh, adding, setAdding, categories }) {
         />
       )}
       <div className="gig-list">
-        {gigs.map(evt => <GigItem key={evt.id} evt={evt} today={today} refresh={refresh} categories={categories} />)}
+        {gigs.map(evt => <GigItem key={evt.id} evt={evt} today={today} refresh={refresh} categories={categories} openLogPopup={openLogPopup} />)}
         {gigs.length === 0 && !adding && (
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>No gigs yet.</div>
         )}
@@ -105,7 +105,7 @@ function GigsList({ gigs, today, refresh, adding, setAdding, categories }) {
   );
 }
 
-function GigItem({ evt, today, refresh, categories }) {
+function GigItem({ evt, today, refresh, categories, openLogPopup }) {
   const [editing, setEditing] = useState(false);
   const [name, setName]       = useState(evt.name);
   const [date, setDate]       = useState(evt.date);
@@ -186,19 +186,32 @@ function GigItem({ evt, today, refresh, categories }) {
           {timeStr && <span style={{ color: 'var(--text-dimmer)', marginLeft: 6 }}>· {timeStr}</span>}
         </div>
         {evt.notes && <div className="gig-notes">{evt.notes}</div>}
+        {evt.done && (evt.log || []).filter(e => e.type === 'completed' && e.note).map(e => (
+          <div key={e.id} className="gig-notes" style={{ fontStyle: 'italic', opacity: 0.7 }}>{e.note}</div>
+        ))}
       </div>
       <div className="gig-actions">
         <button className="o-act" onClick={() => { setName(evt.name); setDate(evt.date); setTime(evt.time || ''); setNotes(evt.notes || ''); setCategoryId(evt.categoryId || ''); setAddToCouples(evt.addToCouples ?? true); setEditing(true); }}>Edit</button>
         <button className="o-act" onClick={() => { archiveEvent(evt.id); refresh(); }}>Archive</button>
       </div>
-      <div className={`gig-check${evt.done ? ' done' : ''}`} onClick={() => { updateEvent(evt.id, { done: !evt.done }); refresh(); }} />
+      <div className={`gig-check${evt.done ? ' done' : ''}`} onClick={() => {
+        if (!evt.done) {
+          openLogPopup(null, 'done', (note) => {
+            updateEvent(evt.id, { done: true, doneAt: Date.now() });
+            if (note) addEventLogEntry(evt.id, { type: 'completed', note });
+            refresh();
+          }, evt.name);
+        } else {
+          updateEvent(evt.id, { done: false, doneAt: null }); refresh();
+        }
+      }} />
     </div>
   );
 }
 
 // ── Meetings ──────────────────────────────────────────────────────────────────
 
-function MeetingsList({ meetings, today, refresh, adding, setAdding, categories }) {
+function MeetingsList({ meetings, today, refresh, adding, setAdding, categories, openLogPopup }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -234,7 +247,7 @@ function MeetingsList({ meetings, today, refresh, adding, setAdding, categories 
         />
       )}
       <div className="gig-list">
-        {meetings.map(mtg => <MeetingItem key={mtg.id} mtg={mtg} today={today} refresh={refresh} categories={categories} />)}
+        {meetings.map(mtg => <MeetingItem key={mtg.id} mtg={mtg} today={today} refresh={refresh} categories={categories} openLogPopup={openLogPopup} />)}
         {meetings.length === 0 && !adding && (
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>No meetings yet.</div>
         )}
@@ -243,7 +256,7 @@ function MeetingsList({ meetings, today, refresh, adding, setAdding, categories 
   );
 }
 
-function MeetingItem({ mtg, today, refresh, categories }) {
+function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
   const [editing, setEditing]     = useState(false);
   const [name, setName]           = useState(mtg.name);
   const [date, setDate]           = useState(mtg.date);
@@ -334,12 +347,25 @@ function MeetingItem({ mtg, today, refresh, categories }) {
           </div>
         )}
         {mtg.notes && <div className="gig-notes">{mtg.notes}</div>}
+        {mtg.done && (mtg.log || []).filter(e => e.type === 'completed' && e.note).map(e => (
+          <div key={e.id} className="gig-notes" style={{ fontStyle: 'italic', opacity: 0.7 }}>{e.note}</div>
+        ))}
       </div>
       <div className="gig-actions">
         <button className="o-act" onClick={() => { setName(mtg.name); setDate(mtg.date); setTime(mtg.time || ''); setLocation(mtg.location || ''); setNotes(mtg.notes || ''); setCategoryId(mtg.categoryId || ''); setAddToCouples(mtg.addToCouples ?? true); setEditing(true); }}>Edit</button>
         <button className="o-act" onClick={() => { archiveMeeting(mtg.id); refresh(); }}>Archive</button>
       </div>
-      <div className={`gig-check${mtg.done ? ' done' : ''}`} onClick={() => { updateMeeting(mtg.id, { done: !mtg.done }); refresh(); }} />
+      <div className={`gig-check${mtg.done ? ' done' : ''}`} onClick={() => {
+        if (!mtg.done) {
+          openLogPopup(null, 'done', (note) => {
+            updateMeeting(mtg.id, { done: true, doneAt: Date.now() });
+            if (note) addMeetingLogEntry(mtg.id, { type: 'completed', note });
+            refresh();
+          }, mtg.name);
+        } else {
+          updateMeeting(mtg.id, { done: false, doneAt: null }); refresh();
+        }
+      }} />
     </div>
   );
 }

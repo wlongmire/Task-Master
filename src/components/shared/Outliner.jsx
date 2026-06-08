@@ -3,6 +3,7 @@ import {
   getTasks, getCategories, addTask, insertTaskAfter, updateTask, moveTask,
   archiveTask, deleteTask, addLogEntry, todayKey
 } from '../../db';
+import Modal from './Modal';
 
 // Survives remounts — stores the task ID to focus after next render
 let _pendingFocus = null;
@@ -375,16 +376,16 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
   const accentColor = listState === 'todo' ? 'var(--c-todo)' : listState === 'backlog' ? 'var(--c-backlog)' : 'var(--c-inprogress)';
 
   return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }} />
-      <div style={{
-        position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-        width: 'calc(100% - 32px)', zIndex: 101,
+    <Modal
+      onClose={onClose}
+      variant="top"
+      style={{
         background: 'var(--surface)', border: '1px solid var(--border2)',
         borderRadius: 16, padding: '20px 20px 28px',
         display: 'flex', flexDirection: 'column', gap: 12,
-        maxHeight: '85vh', overflowY: 'auto',
-      }}>
+        maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto',
+      }}
+    >
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dimmer)' }}>
           Add to {stateLabel}
         </div>
@@ -396,7 +397,7 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
           onChange={e => setText(e.target.value)}
           placeholder="What needs doing?"
           rows={2}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } if (e.key === 'Escape') onClose(); }}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
           style={{
             width: '100%', background: 'var(--surface2)', border: '1px solid var(--border2)',
             borderRadius: 8, color: 'var(--text)', fontFamily: 'var(--font-ui)',
@@ -412,7 +413,7 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
             style={{
               background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8,
               color: selectedCat ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-ui)',
-              fontSize: 15, padding: '10px 14px', outline: 'none', colorScheme: 'dark', width: '100%',
+              fontSize: 16, padding: '10px 14px', outline: 'none', colorScheme: 'dark', width: '100%',
             }}
           >
             <option value="">No topic</option>
@@ -445,7 +446,7 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
               style={{
                 width: '100%', background: 'var(--surface2)', border: '1px solid var(--border2)',
                 borderRadius: 8, color: 'var(--text)', fontFamily: 'var(--font-ui)',
-                fontSize: 14, padding: '10px 14px', outline: 'none', resize: 'none', lineHeight: 1.5,
+                fontSize: 16, padding: '10px 14px', outline: 'none', resize: 'none', lineHeight: 1.5,
               }}
             />
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -458,7 +459,7 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
                   style={{
                     background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8,
                     color: dueDate ? 'var(--text)' : 'var(--text-dimmer)', fontFamily: 'var(--font-mono)',
-                    fontSize: 14, padding: '10px 14px', outline: 'none', colorScheme: 'dark', width: '100%',
+                    fontSize: 16, padding: '10px 14px', outline: 'none', colorScheme: 'dark', width: '100%',
                   }}
                 />
               </div>
@@ -490,8 +491,7 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
             background: accentColor, color: '#000', cursor: 'pointer',
           }}>Add Task</button>
         </div>
-      </div>
-    </>
+    </Modal>
   );
 }
 
@@ -612,15 +612,14 @@ function TaskDetailModal({ task, listState, onAction, onClose }) {
   };
 
   return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100 }} />
-      <div style={{
-        position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-        width: 'calc(100% - 32px)', zIndex: 101, maxHeight: '85vh', overflowY: 'auto',
-        background: 'var(--surface)', border: '1px solid var(--border2)',
+    <Modal
+      onClose={onClose}
+      style={{
+        width: 'calc(100% - 32px)', maxHeight: '85vh', overflowY: 'auto',
         borderRadius: 16, padding: '20px 20px 28px',
         display: 'flex', flexDirection: 'column', gap: 12,
-      }}>
+      }}
+    >
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dimmer)' }}>
           Task Details
         </div>
@@ -674,8 +673,7 @@ function TaskDetailModal({ task, listState, onAction, onClose }) {
           <button onClick={onClose} style={{ flex: 1, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 500, padding: '12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>Cancel</button>
           <button onClick={save} style={{ flex: 2, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 600, padding: '12px', borderRadius: 8, border: 'none', background: accentColor, color: '#000', cursor: 'pointer' }}>Save</button>
         </div>
-      </div>
-    </>
+    </Modal>
   );
 }
 

@@ -92,7 +92,7 @@ export default function App() {
   }, []);
 
   const openArchive   = useCallback((tab = 'grateful') => { setArchiveTab(tab); setArchiveOpen(true); }, []);
-  const openLogPopup  = useCallback((taskId, type, onDone) => setLogPopup({ taskId, type, onDone }), []);
+  const openLogPopup  = useCallback((taskId, type, onDone, title) => setLogPopup({ taskId, type, onDone, title }), []);
   const closeLogPopup = useCallback(() => setLogPopup(null), []);
 
   // ── Auth loading ─────────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ export default function App() {
       <ArchiveOverlay open={archiveOpen} tab={archiveTab} setTab={setArchiveTab} onClose={() => setArchiveOpen(false)} tick={tick} />
       {logPopup && (
         <LogPopup
-          taskId={logPopup.taskId} type={logPopup.type}
+          taskId={logPopup.taskId} title={logPopup.title} type={logPopup.type}
           onDone={(note) => { logPopup.onDone(note); closeLogPopup(); }}
           onCancel={closeLogPopup}
         />
