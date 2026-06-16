@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import Outliner from '../shared/Outliner';
-import { getTasks, restoreTask, archiveTask, todayKey } from '../../db';
+import { getTasks, getCategories, restoreTask, archiveTask, todayKey } from '../../db';
 
 export default function ActivePage({ viewDay, refresh, tick, openArchive, openLogPopup, onPageEnd, onPageStart }) {
   return (
@@ -36,6 +36,8 @@ export default function ActivePage({ viewDay, refresh, tick, openArchive, openLo
 function CompletedList({ tick, refresh, viewDay }) {
   const [expandedGroups, setExpandedGroups] = useState(new Set(['today', 'yesterday']));
   const today = todayKey();
+
+  const categories = useMemo(() => getCategories(), [tick]);
 
   const grouped = useMemo(() => {
     const tasks = getTasks().filter(t => !t.archived);
@@ -106,7 +108,7 @@ function CompletedList({ tick, refresh, viewDay }) {
             </div>
             {isExpanded && tasks.map(item =>
               item.kind === 'completed'
-                ? <CompletedItem key={item.task.id} task={item.task} refresh={refresh} viewDay={viewDay} />
+                ? <CompletedItem key={item.task.id} task={item.task} refresh={refresh} viewDay={viewDay} categories={categories} />
                 : <ProgressItem key={item.entry.id} task={item.task} entry={item.entry} />
             )}
           </div>
@@ -129,7 +131,7 @@ const LOG_TYPE_LABEL = {
   done:     'done',
 };
 
-function CompletedItem({ task, refresh, viewDay }) {
+function CompletedItem({ task, refresh, viewDay, categories }) {
   const [expanded, setExpanded] = useState(false);
   const log = task.log ? [...task.log].reverse() : [];
   const hasLog = log.length > 0;
@@ -137,6 +139,7 @@ function CompletedItem({ task, refresh, viewDay }) {
   const timeStr = task.dateCompleted
     ? new Date(task.dateCompleted).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     : '';
+  const cat = task.categoryId ? (categories || []).find(c => c.id === task.categoryId) : null;
 
   return (
     <div className="comp-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
@@ -144,6 +147,7 @@ function CompletedItem({ task, refresh, viewDay }) {
         style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: hasLog ? 'pointer' : 'default' }}>
         <div className="comp-check" style={{ flexShrink: 0 }} />
         <div className="comp-title" style={{ flex: 1 }}>{task.text}</div>
+        {cat && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-completed)', border: '1px solid var(--c-completed)', borderRadius: 3, padding: '1px 5px', opacity: 0.7, flexShrink: 0 }}>{cat.name}</span>}
         <div className="comp-meta comp-time" style={{ flexShrink: 0 }}>{timeStr}</div>
         {hasLog && <div className="comp-expand-arrow" style={{ fontSize: 10, color: 'var(--text-dimmer)', flexShrink: 0 }}>{expanded ? '▾' : '▸'}</div>}
         <div className="comp-actions" style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
