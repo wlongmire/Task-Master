@@ -36,19 +36,29 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
   // After every render, check if we need to focus/scroll to a task
   useEffect(() => {
     if (!_pendingFocus || !containerRef.current) return;
-    const el = containerRef.current.querySelector(`textarea[data-task-id="${_pendingFocus}"], input[data-task-id="${_pendingFocus}"]`);
-    if (el) {
-      if (isMobile) {
-        // Don't focus (would re-open keyboard); just scroll the row into view
-        const row = el.closest('.o-row') ?? el;
-        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } else {
-        el.focus({ preventScroll: true });
-        const len = el.value?.length ?? 0;
-        try { el.setSelectionRange(len, len); } catch (_) {}
-      }
-      _pendingFocus = null;
+    const id = _pendingFocus;
+    const el = containerRef.current.querySelector(`textarea[data-task-id="${id}"], input[data-task-id="${id}"]`);
+    if (!el) return;
+    _pendingFocus = null;
+    if (isMobile) {
+      // Don't focus (would re-open keyboard); just scroll the row into view
+      const row = el.closest('.o-row') ?? el;
+      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
     }
+    // Focus now AND again next frame. The synchronous focus handles the simple
+    // case; the next-frame focus wins the race when a remount moves focus to
+    // <body> (as the old focused node unmounts) and would otherwise steal it
+    // back after a one-shot focus(). Re-query each time in case of a remount.
+    const doFocus = () => {
+      const elNow = containerRef.current?.querySelector(`textarea[data-task-id="${id}"], input[data-task-id="${id}"]`);
+      if (!elNow) return;
+      elNow.focus({ preventScroll: true });
+      const len = elNow.value?.length ?? 0;
+      try { elNow.setSelectionRange(len, len); } catch (_) {}
+    };
+    doFocus();
+    requestAnimationFrame(doFocus);
   });
 
   const tasks = getTasks().filter(t => {
@@ -61,6 +71,11 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
   const toggleCat = (catId) => setCollapsed(s => { const n = new Set(s); n.has(catId) ? n.delete(catId) : n.add(catId); return n; });
 
   const toggleDetail = (taskId) => setExpanded(s => { const n = new Set(s); n.has(taskId) ? n.delete(taskId) : n.add(taskId); return n; });
+
+  const handlePurge = useCallback((taskId) => {
+    deleteTask(taskId);
+    refresh();
+  }, [refresh]);
 
   const handleDelete = useCallback((taskId) => {
     if (!containerRef.current) return;
@@ -230,9 +245,10 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
     tasks: tasks.filter(t => t.categoryId === cat.id),
   })).sort((a, b) => {
     const score = ({ tasks: ts }) => {
-      if (ts.some(t => t.urgent))  return 0;
-      if (ts.some(t => t.dueDate)) return 1;
-      if (ts.length > 0)           return 2;
+      const filled = ts.filter(t => t.text?.trim());
+      if (filled.some(t => t.urgent))  return 0;
+      if (filled.some(t => t.dueDate)) return 1;
+      if (filled.length > 0)           return 2;
       return 3; // empty topics last
     };
     return score(a) - score(b);
@@ -266,16 +282,17 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
           onEnter={handleEnter}
           onArrow={handleArrow}
           onTextChange={handleTextChange}
+          onPurge={handlePurge}
         />
       ))}
 
       {/* Uncategorized add row */}
       <div className="o-add" tabIndex={0} data-add-cat="none"
-        onClick={() => isMobile ? setAddModal({ catId: null }) : handleNewTask(null)}
+        onClick={() => setAddModal({ catId: null })}
         onKeyDown={e => {
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); handleAddRowArrow('none', e.key === 'ArrowUp' ? 'up' : 'down'); }
-          else if (e.key === 'Enter') { e.preventDefault(); isMobile ? setAddModal({ catId: null }) : handleNewTask(null); }
-          else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); isMobile ? setAddModal({ catId: null }) : handleNewTask(null, e.key); }
+          else if (e.key === 'Enter') { e.preventDefault(); setAddModal({ catId: null }); }
+          else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setAddModal({ catId: null, initialText: e.key }); }
         }}>
         <div className={`o-add-plus ${listState}`}>+</div>
         <div className="o-add-label">{addLabel}</div>
@@ -316,14 +333,15 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
                   onEnter={handleEnter}
                   onArrow={handleArrow}
                   onTextChange={handleTextChange}
+                  onPurge={handlePurge}
                 />
               ))}
               <div className="o-add" style={{ paddingLeft: 36 }} tabIndex={0} data-add-cat={cat.id}
-                onClick={() => isMobile ? setAddModal({ catId: cat.id }) : handleNewTask(cat.id)}
+                onClick={() => setAddModal({ catId: cat.id })}
                 onKeyDown={e => {
                   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); handleAddRowArrow(cat.id, e.key === 'ArrowUp' ? 'up' : 'down'); }
-                  else if (e.key === 'Enter') { e.preventDefault(); isMobile ? setAddModal({ catId: cat.id }) : handleNewTask(cat.id); }
-                  else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); isMobile ? setAddModal({ catId: cat.id }) : handleNewTask(cat.id, e.key); }
+                  else if (e.key === 'Enter') { e.preventDefault(); setAddModal({ catId: cat.id }); }
+                  else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setAddModal({ catId: cat.id, initialText: e.key }); }
                 }}>
                 <div className={`o-add-plus ${listState}`}>+</div>
                 <div className="o-add-label">{addLabel}</div>
@@ -337,6 +355,7 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
         <AddTaskModal
           listState={listState}
           catId={addModal.catId}
+          initialText={addModal.initialText}
           categories={categories}
           onAdd={(text, catId, extras) => {
             const newTask = addTask({ text, state: listState, categoryId: catId || null, dayKey: listState === 'todo' ? viewDay : undefined, ...extras });
@@ -351,8 +370,8 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
   );
 }
 
-function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
-  const [text, setText]             = useState('');
+function AddTaskModal({ listState, catId, initialText, categories, onAdd, onClose }) {
+  const [text, setText]             = useState(initialText || '');
   const [description, setDesc]      = useState('');
   const [selectedCat, setSelectedCat] = useState(catId || '');
   const [dueDate, setDueDate]       = useState('');
@@ -360,7 +379,13 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
   const [showDetails, setShowDetails] = useState(false);
   const inputRef = useRef();
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    const len = el.value.length;
+    try { el.setSelectionRange(len, len); } catch (_) {}
+  }, []);
 
   const handleSubmit = () => {
     if (!text.trim()) return;
@@ -495,11 +520,12 @@ function AddTaskModal({ listState, catId, categories, onAdd, onClose }) {
   );
 }
 
-function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expanded, onToggleDetail, onAction, onDelete, onEnter, onArrow, onTextChange }) {
+function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expanded, onToggleDetail, onAction, onDelete, onEnter, onArrow, onTextChange, onPurge }) {
   const lastLog = task.log && task.log.length > 0 ? task.log[task.log.length - 1] : null;
   const wrapperRef = useRef();
   const inputRef = useRef();
   const scrollRaf = useRef();
+  const createdEmpty = useRef(!task.text?.trim());
   const [detailModal, setDetailModal] = useState(false);
 
   const startScroll = useCallback(() => {
@@ -548,7 +574,23 @@ function TaskRow({ task, listState, depth, isMobile, isActive, onActivate, expan
             rows={1}
             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             onFocus={e => { stopScroll(); e.target.style.whiteSpace = 'normal'; e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            onBlur={e => { stopScroll(); e.target.style.whiteSpace = 'nowrap'; e.target.style.height = ''; onTextChange(task.id, e.target.value); }}
+            onBlur={e => {
+              stopScroll(); e.target.style.whiteSpace = 'nowrap'; e.target.style.height = '';
+              const val = e.target.value;
+              if (createdEmpty.current && !val.trim()) {
+                // Defer: a remount can momentarily blur this row before re-focusing
+                // it. Only purge if, a tick later, the field is truly abandoned
+                // (gone, or present-but-unfocused and still empty).
+                const id = task.id;
+                setTimeout(() => {
+                  const el = document.querySelector(`textarea[data-task-id="${id}"]`);
+                  if (el && (document.activeElement === el || el.value.trim())) return;
+                  onPurge(id);
+                }, 100);
+              } else {
+                onTextChange(task.id, val);
+              }
+            }}
             onKeyDown={e => {
               if (e.key === 'Backspace' && e.target.value === '') { e.preventDefault(); onDelete(task.id); }
               else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onTextChange(task.id, e.target.value); onEnter(task.id, task.categoryId || null); }
