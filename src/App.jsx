@@ -1,7 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
-import { initDB, rolloverTodos, todayKey, getTasks } from './db';
+import { initDB, initMockDB, rolloverTodos, todayKey, getTasks } from './db';
+
+// Dev/testing: `?mock` in the URL bypasses Firebase auth and seeds sample data.
+const MOCK = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('mock');
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -46,6 +49,12 @@ export default function App() {
 
   // ── Auth listener ────────────────────────────────────────────────────────
   useEffect(() => {
+    if (MOCK) {
+      console.log('[Mock] running with seeded data — no auth/Firestore');
+      setUser({ uid: 'mock', email: 'mock@local.test' });
+      const cleanupDB = initMockDB(refresh, () => { rolloverTodos(); setDbReady(true); });
+      return () => cleanupDB();
+    }
     let cleanupDB = null;
     let activeUid = null;
     const unsubAuth = onAuthStateChanged(auth, (u) => {

@@ -65,6 +65,17 @@ function _loadFromLS(uid) {
 function _userCol(name)       { return collection(db, 'users', _uid, name); }
 function _userDoc(col, docId) { return doc(db, 'users', _uid, col, docId); }
 
+// ── Mock mode (dev/testing) ─────────────────────────────────────────────────
+// When on, all Firestore writes become no-ops and the app runs purely against
+// the in-memory cache (seeded with sample data). Enabled via `?mock` in the URL
+// — see initMockDB() and App.jsx. Lets the UI be exercised without logging in.
+let _mock = false;
+export function isMockMode() { return _mock; }
+
+function _set(ref, data)    { return _mock ? Promise.resolve() : setDoc(ref, data); }
+function _update(ref, data) { return _mock ? Promise.resolve() : updateDoc(ref, data); }
+function _delete(ref)       { return _mock ? Promise.resolve() : deleteDoc(ref); }
+
 function _markLoaded(name) {
   const wasReady = _loaded.size >= COLLECTIONS.length;
   _loaded.add(name);
@@ -165,6 +176,69 @@ export function initDB(uid, onRefresh, onReady) {
   };
 }
 
+// ── Mock init (dev/testing) ─────────────────────────────────────────────────
+// Bypasses Firestore + auth entirely. Seeds sample data into the in-memory
+// cache so the full UI can be exercised without logging in. Triggered from
+// App.jsx when the URL contains `?mock`.
+export function initMockDB(onRefresh, onReady) {
+  _mock        = true;
+  _uid         = 'mock';
+  _refreshFn   = onRefresh;
+  _onReadyFn   = onReady;
+  _readyCalled = true;
+  _cache       = _seedMock();
+  onReady?.();
+  onRefresh?.();
+  return () => {
+    _mock = false; _uid = null; _refreshFn = null; _onReadyFn = null;
+    _readyCalled = false;
+    _cache = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
+  };
+}
+
+function _seedMock() {
+  const today = todayKey();
+  const now   = Date.now();
+  const cat = (id, name) => ({ id, name });
+  const task = (id, text, state, categoryId, extra = {}) => ({
+    id, text, state, categoryId,
+    archived: false, sortOrder: now + Math.random() * 1000,
+    dayKey: state === 'todo' ? today : undefined,
+    dateCompleted: state === 'completed' ? now : undefined,
+    log: [{ id: id + '-c', type: 'created', note: null, loggedAt: now }],
+    ...extra,
+  });
+  return {
+    categories: [cat('c-work', 'Work'), cat('c-home', 'Personal'), cat('c-errand', 'Errands')],
+    tasks: [
+      task('t1', 'Ship the mock-mode flag', 'todo', 'c-work'),
+      task('t2', 'Review pull requests', 'todo', 'c-work', { urgent: true }),
+      task('t3', 'Buy groceries', 'todo', 'c-home'),
+      task('t4', 'Draft Q3 roadmap', 'backlog', 'c-work'),
+      task('t5', 'Plan weekend trip', 'backlog', 'c-home'),
+      task('t6', 'Refactor data layer', 'inprogress', 'c-work', {
+        log: [
+          { id: 't6-c', type: 'created', note: null, loggedAt: now - 86400000 },
+          { id: 't6-s', type: 'started', note: null, loggedAt: now - 3600000 },
+          { id: 't6-p', type: 'progress', note: 'Wrapped Firestore writes', loggedAt: now - 1800000 },
+        ],
+      }),
+      task('t7', 'Fix Safari time picker', 'completed', 'c-work', {
+        log: [{ id: 't7-d', type: 'done', note: 'Added onBlur fallback', loggedAt: now }],
+      }),
+      task('t8', 'Renew passport', 'completed', 'c-errand'),
+      task('t9', 'Uncategorized done task', 'completed', null),
+    ],
+    events: [
+      { id: 'e1', name: 'Jazz night', date: today, time: '20:00', archived: false, done: false, categoryId: 'c-home', log: [] },
+    ],
+    meetings: [
+      { id: 'm1', name: 'Design sync', date: today, time: '14:30', archived: false, done: false, categoryId: 'c-work', log: [] },
+    ],
+    grateful: {}, intentions: {}, briefings: {}, reflections: {},
+  };
+}
+
 // ── Date utils ────────────────────────────────────────────────────────────────
 export function dateKey(date) {
   const y = date.getFullYear();
@@ -190,7 +264,7 @@ export function setGrateful(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.grateful[dk] = val;
   _persistToLS();
-  setDoc(_userDoc('grateful', dk), clean(val));
+  _set(_userDoc('grateful', dk), clean(val));
 }
 
 // ── Intentions ────────────────────────────────────────────────────────────────
@@ -200,7 +274,7 @@ export function setIntentions(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.intentions[dk] = val;
   _persistToLS();
-  setDoc(_userDoc('intentions', dk), clean(val));
+  _set(_userDoc('intentions', dk), clean(val));
 }
 
 // ── Reflection ────────────────────────────────────────────────────────────────
@@ -225,7 +299,7 @@ export function addReflectionEntry(dk, text) {
   const val = { entries, savedAt: Date.now() };
   _cache.reflections[dk] = val;
   _persistToLS();
-  setDoc(_userDoc('reflections', dk), clean(val));
+  _set(_userDoc('reflections', dk), clean(val));
 }
 export function deleteReflectionEntry(dk, id) {
   const doc = _cache.reflections[dk];
@@ -233,7 +307,7 @@ export function deleteReflectionEntry(dk, id) {
   const val = { entries: doc.entries.filter(e => e.id !== id), savedAt: Date.now() };
   _cache.reflections[dk] = val;
   _persistToLS();
-  setDoc(_userDoc('reflections', dk), clean(val));
+  _set(_userDoc('reflections', dk), clean(val));
 }
 export function updateReflectionEntry(dk, id, newText) {
   const doc = _cache.reflections[dk];
@@ -241,13 +315,13 @@ export function updateReflectionEntry(dk, id, newText) {
   const val = { entries: doc.entries.map(e => e.id === id ? { ...e, text: newText } : e), savedAt: Date.now() };
   _cache.reflections[dk] = val;
   _persistToLS();
-  setDoc(_userDoc('reflections', dk), clean(val));
+  _set(_userDoc('reflections', dk), clean(val));
 }
 export function setReflection(dk, text) {
   const val = { text, savedAt: Date.now() };
   _cache.reflections[dk] = val;
   _persistToLS();
-  setDoc(_userDoc('reflections', dk), clean(val));
+  _set(_userDoc('reflections', dk), clean(val));
 }
 
 // ── Daily Briefing ────────────────────────────────────────────────────────────
@@ -256,7 +330,7 @@ export function setDailyBriefing(dk, updates) {
   const val = { ...(_cache.briefings[dk] || {}), ...updates };
   _cache.briefings[dk] = val;
   _persistToLS();
-  setDoc(_userDoc('briefings', dk), clean(val));
+  _set(_userDoc('briefings', dk), clean(val));
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
@@ -274,7 +348,7 @@ export function addTask(task) {
     ...task,
   };
   _cache.tasks = [..._cache.tasks, newTask];
-  setDoc(_userDoc('tasks', newTask.id), clean(newTask));
+  _set(_userDoc('tasks', newTask.id), clean(newTask));
   _refreshFn?.();
   return newTask;
 }
@@ -297,7 +371,7 @@ export function insertTaskAfter(afterId, task) {
     ...task,
   };
   _cache.tasks = [..._cache.tasks, newTask];
-  setDoc(_userDoc('tasks', newTask.id), clean(newTask));
+  _set(_userDoc('tasks', newTask.id), clean(newTask));
   _refreshFn?.();
   return newTask;
 }
@@ -306,7 +380,7 @@ export function updateTask(id, updates) {
   const idx = _cache.tasks.findIndex(t => t.id === id);
   if (idx === -1) return;
   _cache.tasks[idx] = { ..._cache.tasks[idx], ...updates };
-  updateDoc(_userDoc('tasks', id), clean(updates));
+  _update(_userDoc('tasks', id), clean(updates));
   _refreshFn?.();
 }
 
@@ -324,7 +398,7 @@ export function archiveTask(id) { updateTask(id, { archived: true, archivedAt: D
 
 export function deleteTask(id) {
   _cache.tasks = _cache.tasks.filter(t => t.id !== id);
-  deleteDoc(_userDoc('tasks', id));
+  _delete(_userDoc('tasks', id));
   _refreshFn?.();
 }
 
@@ -342,7 +416,7 @@ export function addLogEntry(taskId, { type, note = null }) {
   const entry      = { id: String(Date.now()), type, note, loggedAt: Date.now() };
   const updatedLog = [...(_cache.tasks[idx].log || []), entry];
   _cache.tasks[idx] = { ..._cache.tasks[idx], log: updatedLog };
-  updateDoc(_userDoc('tasks', taskId), clean({ log: updatedLog }));
+  _update(_userDoc('tasks', taskId), clean({ log: updatedLog }));
   _refreshFn?.();
   return entry;
 }
@@ -352,7 +426,7 @@ export function rolloverTodos() {
   const stale = _cache.tasks.filter(t => !t.archived && t.state === 'todo' && t.dayKey && t.dayKey < today);
   stale.forEach(t => {
     t.dayKey = today;
-    updateDoc(_userDoc('tasks', t.id), { dayKey: today });
+    _update(_userDoc('tasks', t.id), { dayKey: today });
   });
   if (stale.length) _refreshFn?.();
 }
@@ -364,7 +438,7 @@ export function getArchivedCategories() { return [..._cache.categories].filter(c
 export function addCategory(cat) {
   const newCat = { id: genId(), ...cat };
   _cache.categories = [..._cache.categories, newCat];
-  setDoc(_userDoc('categories', newCat.id), clean(newCat));
+  _set(_userDoc('categories', newCat.id), clean(newCat));
   _refreshFn?.();
   return newCat;
 }
@@ -372,7 +446,7 @@ export function updateCategory(id, updates) {
   const idx = _cache.categories.findIndex(c => c.id === id);
   if (idx === -1) return;
   _cache.categories[idx] = { ..._cache.categories[idx], ...updates };
-  updateDoc(_userDoc('categories', id), clean(updates));
+  _update(_userDoc('categories', id), clean(updates));
   _refreshFn?.();
 }
 export function archiveCategory(id) {
@@ -380,13 +454,13 @@ export function archiveCategory(id) {
   _cache.tasks.forEach(t => {
     if (t.categoryId === id && !t.archived) {
       t.archived = true; t.archivedAt = now;
-      updateDoc(_userDoc('tasks', t.id), { archived: true, archivedAt: now });
+      _update(_userDoc('tasks', t.id), { archived: true, archivedAt: now });
     }
   });
   const idx = _cache.categories.findIndex(c => c.id === id);
   if (idx !== -1) {
     _cache.categories[idx] = { ..._cache.categories[idx], archived: true, archivedAt: now };
-    updateDoc(_userDoc('categories', id), { archived: true, archivedAt: now });
+    _update(_userDoc('categories', id), { archived: true, archivedAt: now });
   }
   _refreshFn?.();
 }
@@ -394,22 +468,22 @@ export function restoreCategory(id) {
   _cache.tasks.forEach(t => {
     if (t.categoryId === id && t.archived) {
       t.archived = false; t.archivedAt = null; t.state = 'todo';
-      updateDoc(_userDoc('tasks', t.id), { archived: false, archivedAt: null, state: 'todo' });
+      _update(_userDoc('tasks', t.id), { archived: false, archivedAt: null, state: 'todo' });
     }
   });
   const idx = _cache.categories.findIndex(c => c.id === id);
   if (idx !== -1) {
     _cache.categories[idx] = { ..._cache.categories[idx], archived: false, archivedAt: null };
-    updateDoc(_userDoc('categories', id), { archived: false, archivedAt: null });
+    _update(_userDoc('categories', id), { archived: false, archivedAt: null });
   }
   _refreshFn?.();
 }
 export function deleteCategory(id) {
   // Cascade-delete all tasks belonging to this category
-  _cache.tasks.filter(t => t.categoryId === id).forEach(t => deleteDoc(_userDoc('tasks', t.id)));
+  _cache.tasks.filter(t => t.categoryId === id).forEach(t => _delete(_userDoc('tasks', t.id)));
   _cache.tasks       = _cache.tasks.filter(t => t.categoryId !== id);
   _cache.categories  = _cache.categories.filter(c => c.id !== id);
-  deleteDoc(_userDoc('categories', id));
+  _delete(_userDoc('categories', id));
   _refreshFn?.();
 }
 
@@ -419,7 +493,7 @@ export function getEvents() { return [..._cache.events]; }
 export function addEvent(evt) {
   const newEvt = { id: genId(), archived: false, done: false, log: [], ...evt };
   _cache.events = [..._cache.events, newEvt];
-  setDoc(_userDoc('events', newEvt.id), clean(newEvt));
+  _set(_userDoc('events', newEvt.id), clean(newEvt));
   _refreshFn?.();
   return newEvt;
 }
@@ -427,7 +501,7 @@ export function updateEvent(id, updates) {
   const idx = _cache.events.findIndex(e => e.id === id);
   if (idx === -1) return;
   _cache.events[idx] = { ..._cache.events[idx], ...updates };
-  updateDoc(_userDoc('events', id), clean(updates));
+  _update(_userDoc('events', id), clean(updates));
   _refreshFn?.();
 }
 export function addEventLogEntry(id, { type, note = null }) {
@@ -436,12 +510,12 @@ export function addEventLogEntry(id, { type, note = null }) {
   const entry      = { id: String(Date.now()), type, note, loggedAt: Date.now() };
   const updatedLog = [...(_cache.events[idx].log || []), entry];
   _cache.events[idx] = { ..._cache.events[idx], log: updatedLog };
-  updateDoc(_userDoc('events', id), clean({ log: updatedLog }));
+  _update(_userDoc('events', id), clean({ log: updatedLog }));
 }
 export function archiveEvent(id) { updateEvent(id, { archived: true }); }
 export function deleteEvent(id)  {
   _cache.events = _cache.events.filter(e => e.id !== id);
-  deleteDoc(_userDoc('events', id));
+  _delete(_userDoc('events', id));
   _refreshFn?.();
 }
 
@@ -451,7 +525,7 @@ export function getMeetings() { return [..._cache.meetings]; }
 export function addMeeting(mtg) {
   const newMtg = { id: genId(), archived: false, done: false, log: [], ...mtg };
   _cache.meetings = [..._cache.meetings, newMtg];
-  setDoc(_userDoc('meetings', newMtg.id), clean(newMtg));
+  _set(_userDoc('meetings', newMtg.id), clean(newMtg));
   _refreshFn?.();
   return newMtg;
 }
@@ -459,7 +533,7 @@ export function updateMeeting(id, updates) {
   const idx = _cache.meetings.findIndex(m => m.id === id);
   if (idx === -1) return;
   _cache.meetings[idx] = { ..._cache.meetings[idx], ...updates };
-  updateDoc(_userDoc('meetings', id), clean(updates));
+  _update(_userDoc('meetings', id), clean(updates));
   _refreshFn?.();
 }
 export function addMeetingLogEntry(id, { type, note = null }) {
@@ -468,12 +542,12 @@ export function addMeetingLogEntry(id, { type, note = null }) {
   const entry      = { id: String(Date.now()), type, note, loggedAt: Date.now() };
   const updatedLog = [...(_cache.meetings[idx].log || []), entry];
   _cache.meetings[idx] = { ..._cache.meetings[idx], log: updatedLog };
-  updateDoc(_userDoc('meetings', id), clean({ log: updatedLog }));
+  _update(_userDoc('meetings', id), clean({ log: updatedLog }));
 }
 export function archiveMeeting(id) { updateMeeting(id, { archived: true }); }
 export function deleteMeeting(id)  {
   _cache.meetings = _cache.meetings.filter(m => m.id !== id);
-  deleteDoc(_userDoc('meetings', id));
+  _delete(_userDoc('meetings', id));
   _refreshFn?.();
 }
 
