@@ -371,6 +371,7 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
 }
 
 function AddTaskModal({ listState, catId, initialText, categories, onAdd, onClose }) {
+  const isMobile = useIsMobile();
   const [text, setText]             = useState(initialText || '');
   const [description, setDesc]      = useState('');
   const [selectedCat, setSelectedCat] = useState(catId || '');
@@ -403,11 +404,15 @@ function AddTaskModal({ listState, catId, initialText, categories, onAdd, onClos
   return (
     <Modal
       onClose={onClose}
-      variant="top"
+      variant={isMobile ? 'top' : 'center'}
       style={{
         background: 'var(--surface)', border: '1px solid var(--border2)',
         borderRadius: 16, padding: '20px 20px 28px',
         display: 'flex', flexDirection: 'column', gap: 12,
+        // Desktop: fixed-width centered dialog. Mobile: let the 'top' variant's
+        // own width (calc(100% - 32px)) stand — don't pass width:undefined here,
+        // it would clobber that via object spread.
+        ...(isMobile ? {} : { width: 440, maxWidth: '90vw' }),
         maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto',
       }}
     >
