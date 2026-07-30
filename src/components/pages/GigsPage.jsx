@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { getEvents, addEvent, updateEvent, addEventLogEntry, archiveEvent, deleteEvent, getMeetings, addMeeting, updateMeeting, addMeetingLogEntry, archiveMeeting, deleteMeeting, getCategories, todayKey } from '../../db';
-import { syncToCalendar, removeFromCalendar, calendarReady } from '../../calendar';
 
 function daysUntil(dateStr, today) {
   return Math.round((new Date(dateStr + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
@@ -11,16 +10,6 @@ function countdown(diff) {
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Tomorrow';
   return `${diff} days away`;
-}
-
-async function pushToCalendar(item, addToCouples, saveFn) {
-  if (!item.date) return;
-  try {
-    const calendarIds = await syncToCalendar(item, addToCouples);
-    saveFn({ calendarIds });
-  } catch (e) {
-    console.warn('Calendar sync failed:', e);
-  }
 }
 
 export default function GigsPage({ refresh, tick, openArchive, openLogPopup }) {
@@ -68,14 +57,12 @@ function GigsList({ gigs, today, refresh, adding, setAdding, categories, openLog
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [addToCouples, setAddToCouples] = useState(true);
 
   const handleAdd = () => {
     if (!name.trim() || !date) return;
-    const evt = addEvent({ name: name.trim(), date, time: time || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples });
-    setName(''); setDate(''); setTime(''); setNotes(''); setCategoryId(''); setAddToCouples(true); setAdding(false);
+    addEvent({ name: name.trim(), date, time: time || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
+    setName(''); setDate(''); setTime(''); setNotes(''); setCategoryId(''); setAdding(false);
     refresh();
-    pushToCalendar(evt, addToCouples, updates => updateEvent(evt.id, updates));
   };
 
   return (
@@ -89,7 +76,6 @@ function GigsList({ gigs, today, refresh, adding, setAdding, categories, openLog
           notes={notes} setNotes={setNotes}
           categoryId={categoryId} setCategoryId={setCategoryId}
           categories={categories}
-          addToCouples={addToCouples} setAddToCouples={setAddToCouples}
           onAdd={handleAdd}
           onCancel={() => setAdding(false)}
           addLabel="Add Gig"
@@ -112,7 +98,6 @@ function GigItem({ evt, today, refresh, categories, openLogPopup }) {
   const [time, setTime]       = useState(evt.time || '');
   const [notes, setNotes]     = useState(evt.notes || '');
   const [categoryId, setCategoryId] = useState(evt.categoryId || '');
-  const [addToCouples, setAddToCouples] = useState(evt.addToCouples ?? true);
 
   const diff    = daysUntil(evt.date, today);
   const d       = new Date(evt.date + 'T00:00:00');
@@ -121,16 +106,13 @@ function GigItem({ evt, today, refresh, categories, openLogPopup }) {
 
   const handleSave = () => {
     if (!name.trim() || !date) return;
-    const updates = { name: name.trim(), date, time: time || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples };
+    const updates = { name: name.trim(), date, time: time || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined };
     updateEvent(evt.id, updates);
     setEditing(false);
     refresh();
-    const updated = { ...evt, ...updates };
-    pushToCalendar(updated, addToCouples, calUpdates => updateEvent(evt.id, calUpdates));
   };
 
   const handleDelete = () => {
-    removeFromCalendar(evt);
     deleteEvent(evt.id);
     refresh();
   };
@@ -158,7 +140,6 @@ function GigItem({ evt, today, refresh, categories, openLogPopup }) {
             </select>
           )}
         </div>
-        <CouplesToggle value={addToCouples} onChange={setAddToCouples} />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>
           <button className="btn" onClick={handleDelete} style={{ background: 'transparent', borderColor: '#e05050', color: '#e05050' }}>Delete</button>
@@ -179,7 +160,6 @@ function GigItem({ evt, today, refresh, categories, openLogPopup }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className={`gig-name${evt.done ? ' done' : ''}`}>{evt.name}</div>
           {cat && <span className="gig-tag" style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-gigs)', border: '1px solid var(--c-gigs)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
-          {evt.calendarIds?.taskMaster && <span className="gig-tag"><CalBadge couples={!!(evt.addToCouples ?? true)} /></span>}
         </div>
         <div className="gig-countdown">
           {countdown(diff)}
@@ -191,7 +171,7 @@ function GigItem({ evt, today, refresh, categories, openLogPopup }) {
         ))}
       </div>
       <div className="gig-actions">
-        <button className="o-act" onClick={() => { setName(evt.name); setDate(evt.date); setTime(evt.time || ''); setNotes(evt.notes || ''); setCategoryId(evt.categoryId || ''); setAddToCouples(evt.addToCouples ?? true); setEditing(true); }}>Edit</button>
+        <button className="o-act" onClick={() => { setName(evt.name); setDate(evt.date); setTime(evt.time || ''); setNotes(evt.notes || ''); setCategoryId(evt.categoryId || ''); setEditing(true); }}>Edit</button>
         <button className="o-act" onClick={() => { archiveEvent(evt.id); refresh(); }}>Archive</button>
       </div>
       <div className={`gig-check${evt.done ? ' done' : ''}`} onClick={() => {
@@ -218,14 +198,12 @@ function MeetingsList({ meetings, today, refresh, adding, setAdding, categories,
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [addToCouples, setAddToCouples] = useState(true);
 
   const handleAdd = () => {
     if (!name.trim() || !date) return;
-    const mtg = addMeeting({ name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples });
-    setName(''); setDate(''); setTime(''); setLocation(''); setNotes(''); setCategoryId(''); setAddToCouples(true); setAdding(false);
+    addMeeting({ name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
+    setName(''); setDate(''); setTime(''); setLocation(''); setNotes(''); setCategoryId(''); setAdding(false);
     refresh();
-    pushToCalendar(mtg, addToCouples, updates => updateMeeting(mtg.id, updates));
   };
 
   return (
@@ -240,7 +218,6 @@ function MeetingsList({ meetings, today, refresh, adding, setAdding, categories,
           notes={notes} setNotes={setNotes}
           categoryId={categoryId} setCategoryId={setCategoryId}
           categories={categories}
-          addToCouples={addToCouples} setAddToCouples={setAddToCouples}
           onAdd={handleAdd}
           onCancel={() => setAdding(false)}
           addLabel="Add Meeting"
@@ -264,7 +241,6 @@ function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
   const [location, setLocation]   = useState(mtg.location || '');
   const [notes, setNotes]         = useState(mtg.notes || '');
   const [categoryId, setCategoryId] = useState(mtg.categoryId || '');
-  const [addToCouples, setAddToCouples] = useState(mtg.addToCouples ?? true);
 
   const diff    = daysUntil(mtg.date, today);
   const d       = new Date(mtg.date + 'T00:00:00');
@@ -273,16 +249,13 @@ function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
 
   const handleSave = () => {
     if (!name.trim() || !date) return;
-    const updates = { name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined, addToCouples };
+    const updates = { name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined };
     updateMeeting(mtg.id, updates);
     setEditing(false);
     refresh();
-    const updated = { ...mtg, ...updates };
-    pushToCalendar(updated, addToCouples, calUpdates => updateMeeting(mtg.id, calUpdates));
   };
 
   const handleDelete = () => {
-    removeFromCalendar(mtg);
     deleteMeeting(mtg.id);
     refresh();
   };
@@ -312,7 +285,6 @@ function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
             </select>
           )}
         </div>
-        <CouplesToggle value={addToCouples} onChange={setAddToCouples} />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>
           <button className="btn" onClick={handleDelete} style={{ background: 'transparent', borderColor: '#e05050', color: '#e05050' }}>Delete</button>
@@ -333,7 +305,6 @@ function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className={`gig-name${mtg.done ? ' done' : ''}`}>{mtg.name}</div>
           {cat && <span className="gig-tag" style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-inprogress)', border: '1px solid var(--c-inprogress)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>{cat.name}</span>}
-          {mtg.calendarIds?.taskMaster && <span className="gig-tag"><CalBadge couples={!!(mtg.addToCouples ?? true)} /></span>}
         </div>
         <div className="gig-countdown">
           {countdown(diff)}
@@ -352,7 +323,7 @@ function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
         ))}
       </div>
       <div className="gig-actions">
-        <button className="o-act" onClick={() => { setName(mtg.name); setDate(mtg.date); setTime(mtg.time || ''); setLocation(mtg.location || ''); setNotes(mtg.notes || ''); setCategoryId(mtg.categoryId || ''); setAddToCouples(mtg.addToCouples ?? true); setEditing(true); }}>Edit</button>
+        <button className="o-act" onClick={() => { setName(mtg.name); setDate(mtg.date); setTime(mtg.time || ''); setLocation(mtg.location || ''); setNotes(mtg.notes || ''); setCategoryId(mtg.categoryId || ''); setEditing(true); }}>Edit</button>
         <button className="o-act" onClick={() => { archiveMeeting(mtg.id); refresh(); }}>Archive</button>
       </div>
       <div className={`gig-check${mtg.done ? ' done' : ''}`} onClick={() => {
@@ -372,39 +343,7 @@ function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
 
 // ── Shared components ─────────────────────────────────────────────────────────
 
-function CouplesToggle({ value, onChange }) {
-  return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-      <div
-        onClick={() => onChange(!value)}
-        style={{
-          width: 28, height: 16, borderRadius: 8, position: 'relative', flexShrink: 0,
-          background: value ? 'var(--c-grateful)' : 'var(--border2)',
-          transition: 'background 0.15s', cursor: 'pointer',
-        }}
-      >
-        <div style={{
-          position: 'absolute', top: 2, left: value ? 14 : 2,
-          width: 12, height: 12, borderRadius: '50%',
-          background: '#fff', transition: 'left 0.15s',
-        }} />
-      </div>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: value ? 'var(--text-dim)' : 'var(--text-dimmer)', letterSpacing: '0.06em' }}>
-        Add to Couples calendar
-      </span>
-    </label>
-  );
-}
-
-function CalBadge({ couples }) {
-  return (
-    <span title={couples ? 'On Task Master + Couples calendars' : 'On Task Master calendar'} style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#5a9a6a', border: '1px solid #5a9a6a', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>
-      {couples ? '📅 +Couples' : '📅'}
-    </span>
-  );
-}
-
-function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime, location, setLocation, notes, setNotes, categoryId, setCategoryId, categories, addToCouples, setAddToCouples, onAdd, onCancel, addLabel }) {
+function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime, location, setLocation, notes, setNotes, categoryId, setCategoryId, categories, onAdd, onCancel, addLabel }) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -459,12 +398,9 @@ function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime,
           </select>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <CouplesToggle value={addToCouples} onChange={setAddToCouples} />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn ghost" onClick={onCancel}>Cancel</button>
-          <button className="btn primary" onClick={onAdd}>{addLabel}</button>
-        </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button className="btn ghost" onClick={onCancel}>Cancel</button>
+        <button className="btn primary" onClick={onAdd}>{addLabel}</button>
       </div>
     </div>
   );

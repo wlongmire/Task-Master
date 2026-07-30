@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
-import { setCalendarToken } from '../calendar';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -11,9 +10,7 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const cred = GoogleAuthProvider.credentialFromResult(result);
-      if (cred?.accessToken) setCalendarToken(cred.accessToken);
+      await signInWithPopup(auth, googleProvider);
     } catch (err) {
       setError('Sign-in failed. Please try again.');
       setLoading(false);
