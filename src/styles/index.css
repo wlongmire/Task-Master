@@ -317,10 +317,40 @@ html, body {
 .comp-group-toggle:hover { background: var(--surface2); color: var(--text-dim); }
 
 /* ── Gigs ── */
-.gig-list { display: flex; flex-direction: column; gap: 8px; }
+.gig-list { display: flex; flex-direction: column; gap: 6px; }
+/* Desktop: gigs + engagements share a grid so each month lines up across columns. */
+.gigs-aligned { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; row-gap: 0; width: 100%; min-width: 0; align-items: start; }
+.gigs-aligned > * { min-width: 0; }
+.gigs-aligned .month-col { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.gig-month-hd {
+  display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-dimmer); font-weight: 600;
+  margin-top: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+  transition: color 0.15s;
+}
+.gig-month-hd:first-child { margin-top: 0; }
+.gig-month-hd:hover { color: var(--text-dim); }
+.gig-month-caret { display: inline-block; font-size: 7px; transition: transform 0.15s; }
+.gig-month-hd.collapsed .gig-month-caret { transform: rotate(-90deg); }
+.gig-month-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.gig-month-count {
+  font-weight: 600; letter-spacing: 0.06em;
+  color: var(--text-dimmer); background: var(--surface2);
+  border-radius: 8px; padding: 1px 7px;
+}
+.gig-month-archive {
+  font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dimmer); background: transparent; border: 1px solid var(--border2);
+  border-radius: 4px; padding: 2px 7px; cursor: pointer; transition: all 0.15s;
+  opacity: 0; font-weight: 600;
+}
+.gig-month-hd:hover .gig-month-archive { opacity: 1; }
+.gig-month-archive:hover { color: var(--text); border-color: var(--text-dim); }
+@media (max-width: 600px) { .gig-month-archive { opacity: 1; } }
 .gig-item {
-  display: flex; align-items: flex-start; gap: 14px;
-  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px;
   border: 1px solid var(--border);
   border-left: 3px solid var(--c-gigs);
   border-radius: var(--radius);
@@ -330,24 +360,24 @@ html, body {
 .gig-item.done-gig { opacity: 0.4; border-left-color: var(--text-dimmer); }
 .gig-date {
   display: flex; flex-direction: column; align-items: center;
-  min-width: 42px; background: var(--surface2);
+  min-width: 38px; background: var(--surface2);
   border: 1px solid var(--border2);
-  border-radius: 4px; padding: 5px 6px; flex-shrink: 0;
+  border-radius: 4px; padding: 3px 6px; flex-shrink: 0;
 }
 .gig-month { font-family: var(--font-mono); font-size: 7px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-gigs); font-weight: 600; }
 .gig-item.meeting .gig-month { color: var(--c-inprogress); }
 .gig-item.meeting { border-left-color: var(--c-inprogress); }
-.gig-day { font-family: var(--font-ui); font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.05; letter-spacing: -0.02em; }
+.gig-day { font-family: var(--font-ui); font-size: 18px; font-weight: 700; color: var(--text); line-height: 1.05; letter-spacing: -0.02em; }
 .gig-weekday { font-family: var(--font-mono); font-size: 7px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dimmer); }
 .gig-body { flex: 1; }
-.gig-name { font-family: var(--font-ui); font-size: 15px; font-weight: 600; color: var(--text); }
+.gig-name { font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: var(--text); }
 .gig-name.done { text-decoration: line-through; color: var(--text-dim); }
 .gig-countdown { font-family: var(--font-mono); font-size: 9px; color: var(--c-gigs); margin-top: 3px; letter-spacing: 0.04em; }
 .gig-item.meeting .gig-countdown { color: var(--c-inprogress); }
 .gig-notes { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); margin-top: 5px; }
 .gig-check {
   width: 16px; height: 16px; border: 1.5px solid var(--border2);
-  border-radius: 50%; flex-shrink: 0; margin-top: 4px; cursor: pointer; transition: all 0.15s;
+  border-radius: 50%; flex-shrink: 0; cursor: pointer; transition: all 0.15s;
 }
 .gig-check:hover { border-color: var(--c-completed); }
 .gig-check.done { border-color: var(--c-completed); background: var(--c-completed); }

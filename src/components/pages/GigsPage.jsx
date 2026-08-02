@@ -1,8 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { getEvents, addEvent, updateEvent, addEventLogEntry, archiveEvent, deleteEvent, getMeetings, addMeeting, updateMeeting, addMeetingLogEntry, archiveMeeting, deleteMeeting, getCategories, todayKey } from '../../db';
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth <= 600);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return isMobile;
+}
 
 function daysUntil(dateStr, today) {
   return Math.round((new Date(dateStr + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+}
+
+function byDateThenTime(a, b) {
+  return (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '');
 }
 
 function countdown(diff) {
@@ -12,46 +26,173 @@ function countdown(diff) {
   return `${diff} days away`;
 }
 
+function monthLabel(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// Groups a date-sorted list into consecutive month runs: [{ key, label, items }].
+function groupByMonth(items) {
+  const groups = [];
+  let cur = null;
+  for (const it of items) {
+    const key = it.date.slice(0, 7); // YYYY-MM
+    if (!cur || cur.key !== key) { cur = { key, label: monthLabel(it.date), items: [] }; groups.push(cur); }
+    cur.items.push(it);
+  }
+  return groups;
+}
+
+// Merges gigs + meetings into shared, chronologically-sorted month buckets so the
+// two columns can line up month-for-month: [{ key, label, gigs, meetings }].
+function mergeMonths(gigs, meetings) {
+  const map = new Map();
+  const bucket = (dateStr) => {
+    const key = dateStr.slice(0, 7); // YYYY-MM
+    if (!map.has(key)) map.set(key, { key, label: monthLabel(dateStr), gigs: [], meetings: [] });
+    return map.get(key);
+  };
+  for (const g of gigs) bucket(g.date).gigs.push(g);
+  for (const m of meetings) bucket(m.date).meetings.push(m);
+  return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function MonthHeader({ label, count, expanded, onToggle, onArchive, style }) {
+  return (
+    <div
+      className={`gig-month-hd${expanded ? '' : ' collapsed'}`}
+      style={style}
+      onClick={onToggle}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+    >
+      <span className="gig-month-caret">▾</span>
+      <span>{label}</span>
+      <span className="gig-month-right">
+        {onArchive && count > 0 && (
+          <button className="gig-month-archive" onClick={e => { e.stopPropagation(); onArchive(); }}>Archive all</button>
+        )}
+        {!expanded && count > 0 && <span className="gig-month-count">{count}</span>}
+      </span>
+    </div>
+  );
+}
+
 export default function GigsPage({ refresh, tick, openArchive, openLogPopup }) {
   const today = todayKey();
+  const isMobile = useIsMobile();
   const [addingGig, setAddingGig] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
 
-  const gigs = useMemo(() =>
-    getEvents().filter(e => !e.archived).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
-  [tick]);
-
-  const meetings = useMemo(() =>
-    getMeetings().filter(m => !m.archived).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
-  [tick]);
-
+  const gigs = useMemo(() => getEvents().filter(e => !e.archived).sort(byDateThenTime), [tick]);
+  const meetings = useMemo(() => getMeetings().filter(m => !m.archived).sort(byDateThenTime), [tick]);
   const categories = useMemo(() => getCategories(), [tick]);
 
+  const itemProps = { today, refresh, categories, openLogPopup };
+
+  // Collapsible months: past months default collapsed; a user toggle overrides the default.
+  const curMonth = today.slice(0, 7);
+  const [monthOverrides, setMonthOverrides] = useState({});
+  const isExpanded = key => (key in monthOverrides ? monthOverrides[key] : key >= curMonth);
+  const toggleMonth = key => setMonthOverrides(o => ({ ...o, [key]: !isExpanded(key) }));
+
+  const archiveAll = (items, archiveFn, label, noun) => {
+    const n = items.length;
+    if (!n) return;
+    if (!window.confirm(`Archive all ${n} ${noun}${n > 1 ? 's' : ''} in ${label}?`)) return;
+    items.forEach(it => archiveFn(it.id));
+    refresh();
+  };
+  const archiveMonth = mo => {
+    const n = mo.gigs.length + mo.meetings.length;
+    if (!n) return;
+    if (!window.confirm(`Archive all ${n} item${n > 1 ? 's' : ''} in ${mo.label}?`)) return;
+    mo.gigs.forEach(g => archiveEvent(g.id));
+    mo.meetings.forEach(m => archiveMeeting(m.id));
+    refresh();
+  };
+
+  const GigsHd = (
+    <div className="section-hd">
+      <span className="section-title gigs">Gigs</span>
+      <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px' }} onClick={() => setAddingGig(a => !a)}>+ New Gig</button>
+    </div>
+  );
+  const MeetingsHd = (
+    <div className="section-hd">
+      <span className="section-title inprogress">Engagements</span>
+      <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px', background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={() => setAddingMeeting(a => !a)}>+ New Engagement</button>
+    </div>
+  );
+  const emptyNote = txt => <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>{txt}</div>;
+
+  // Mobile: two independent stacked lists, each grouped by month on its own.
+  if (isMobile) {
+    return (
+      <div className="page">
+        <div className="page-grid">
+          <section className="section" id="section-gigs-list">
+            {GigsHd}
+            {addingGig && <GigAddForm categories={categories} refresh={refresh} onClose={() => setAddingGig(false)} />}
+            <div className="gig-list">
+              {groupByMonth(gigs).map(group => (
+                <React.Fragment key={group.key}>
+                  <MonthHeader label={group.label} count={group.items.length} expanded={isExpanded(group.key)} onToggle={() => toggleMonth(group.key)} onArchive={() => archiveAll(group.items, archiveEvent, group.label, 'gig')} />
+                  {isExpanded(group.key) && group.items.map(evt => <GigItem key={evt.id} evt={evt} {...itemProps} />)}
+                </React.Fragment>
+              ))}
+              {gigs.length === 0 && !addingGig && emptyNote('No gigs yet.')}
+            </div>
+          </section>
+          <section className="section" id="section-meetings-list">
+            {MeetingsHd}
+            {addingMeeting && <MeetingAddForm categories={categories} refresh={refresh} onClose={() => setAddingMeeting(false)} />}
+            <div className="gig-list">
+              {groupByMonth(meetings).map(group => (
+                <React.Fragment key={group.key}>
+                  <MonthHeader label={group.label} count={group.items.length} expanded={isExpanded(group.key)} onToggle={() => toggleMonth(group.key)} onArchive={() => archiveAll(group.items, archiveMeeting, group.label, 'engagement')} />
+                  {isExpanded(group.key) && group.items.map(mtg => <MeetingItem key={mtg.id} mtg={mtg} {...itemProps} />)}
+                </React.Fragment>
+              ))}
+              {meetings.length === 0 && !addingMeeting && emptyNote('No engagements yet.')}
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: one shared grid so each month lines up across both columns.
+  const months = mergeMonths(gigs, meetings);
   return (
     <div className="page">
-      <div className="page-grid">
-        <section className="section" id="section-gigs-list">
-          <div className="section-hd">
-            <span className="section-title gigs">Gigs</span>
-            <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px' }} onClick={() => setAddingGig(a => !a)}>+ New Gig</button>
-          </div>
-          <GigsList gigs={gigs} today={today} refresh={refresh} adding={addingGig} setAdding={setAddingGig} categories={categories} openLogPopup={openLogPopup} />
-        </section>
-        <section className="section" id="section-meetings-list">
-          <div className="section-hd">
-            <span className="section-title inprogress">Engagements</span>
-            <button className="btn primary" style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 12px', background: 'var(--c-inprogress)', borderColor: 'var(--c-inprogress)' }} onClick={() => setAddingMeeting(a => !a)}>+ New Engagement</button>
-          </div>
-          <MeetingsList meetings={meetings} today={today} refresh={refresh} adding={addingMeeting} setAdding={setAddingMeeting} categories={categories} openLogPopup={openLogPopup} />
-        </section>
+      <div className="gigs-aligned">
+        {GigsHd}
+        {MeetingsHd}
+        {(addingGig || addingMeeting) && (
+          <>
+            <div>{addingGig && <GigAddForm categories={categories} refresh={refresh} onClose={() => setAddingGig(false)} />}</div>
+            <div>{addingMeeting && <MeetingAddForm categories={categories} refresh={refresh} onClose={() => setAddingMeeting(false)} />}</div>
+          </>
+        )}
+        {months.map(mo => (
+          <React.Fragment key={mo.key}>
+            <MonthHeader label={mo.label} count={mo.gigs.length + mo.meetings.length} expanded={isExpanded(mo.key)} onToggle={() => toggleMonth(mo.key)} onArchive={() => archiveMonth(mo)} style={{ gridColumn: '1 / -1' }} />
+            {isExpanded(mo.key) && <div className="month-col">{mo.gigs.map(evt => <GigItem key={evt.id} evt={evt} {...itemProps} />)}</div>}
+            {isExpanded(mo.key) && <div className="month-col">{mo.meetings.map(mtg => <MeetingItem key={mtg.id} mtg={mtg} {...itemProps} />)}</div>}
+          </React.Fragment>
+        ))}
+        {months.length === 0 && !addingGig && !addingMeeting && (
+          <div style={{ gridColumn: '1 / -1' }}>{emptyNote('No gigs or engagements yet.')}</div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Gigs ──────────────────────────────────────────────────────────────────────
+// ── Add forms ──────────────────────────────────────────────────────────────────
 
-function GigsList({ gigs, today, refresh, adding, setAdding, categories, openLogPopup }) {
+function GigAddForm({ categories, refresh, onClose }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -61,33 +202,55 @@ function GigsList({ gigs, today, refresh, adding, setAdding, categories, openLog
   const handleAdd = () => {
     if (!name.trim() || !date) return;
     addEvent({ name: name.trim(), date, time: time || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
-    setName(''); setDate(''); setTime(''); setNotes(''); setCategoryId(''); setAdding(false);
     refresh();
+    onClose();
   };
 
   return (
-    <>
-      {adding && (
-        <AddForm
-          namePlaceholder="Gig name..."
-          date={date} setDate={setDate}
-          name={name} setName={setName}
-          time={time} setTime={setTime}
-          notes={notes} setNotes={setNotes}
-          categoryId={categoryId} setCategoryId={setCategoryId}
-          categories={categories}
-          onAdd={handleAdd}
-          onCancel={() => setAdding(false)}
-          addLabel="Add Gig"
-        />
-      )}
-      <div className="gig-list">
-        {gigs.map(evt => <GigItem key={evt.id} evt={evt} today={today} refresh={refresh} categories={categories} openLogPopup={openLogPopup} />)}
-        {gigs.length === 0 && !adding && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>No gigs yet.</div>
-        )}
-      </div>
-    </>
+    <AddForm
+      namePlaceholder="Gig name..."
+      name={name} setName={setName}
+      date={date} setDate={setDate}
+      time={time} setTime={setTime}
+      notes={notes} setNotes={setNotes}
+      categoryId={categoryId} setCategoryId={setCategoryId}
+      categories={categories}
+      onAdd={handleAdd}
+      onCancel={onClose}
+      addLabel="Add Gig"
+    />
+  );
+}
+
+function MeetingAddForm({ categories, refresh, onClose }) {
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [location, setLocation] = useState('');
+  const [notes, setNotes] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+
+  const handleAdd = () => {
+    if (!name.trim() || !date) return;
+    addMeeting({ name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
+    refresh();
+    onClose();
+  };
+
+  return (
+    <AddForm
+      namePlaceholder="Meeting name..."
+      name={name} setName={setName}
+      date={date} setDate={setDate}
+      time={time} setTime={setTime}
+      location={location} setLocation={setLocation}
+      notes={notes} setNotes={setNotes}
+      categoryId={categoryId} setCategoryId={setCategoryId}
+      categories={categories}
+      onAdd={handleAdd}
+      onCancel={onClose}
+      addLabel="Add Meeting"
+    />
   );
 }
 
@@ -190,48 +353,6 @@ function GigItem({ evt, today, refresh, categories, openLogPopup }) {
 }
 
 // ── Meetings ──────────────────────────────────────────────────────────────────
-
-function MeetingsList({ meetings, today, refresh, adding, setAdding, categories, openLogPopup }) {
-  const [name, setName] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [location, setLocation] = useState('');
-  const [notes, setNotes] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-
-  const handleAdd = () => {
-    if (!name.trim() || !date) return;
-    addMeeting({ name: name.trim(), date, time: time || undefined, location: location.trim() || undefined, notes: notes.trim() || undefined, categoryId: categoryId || undefined });
-    setName(''); setDate(''); setTime(''); setLocation(''); setNotes(''); setCategoryId(''); setAdding(false);
-    refresh();
-  };
-
-  return (
-    <>
-      {adding && (
-        <AddForm
-          namePlaceholder="Meeting name..."
-          date={date} setDate={setDate}
-          name={name} setName={setName}
-          time={time} setTime={setTime}
-          location={location} setLocation={setLocation}
-          notes={notes} setNotes={setNotes}
-          categoryId={categoryId} setCategoryId={setCategoryId}
-          categories={categories}
-          onAdd={handleAdd}
-          onCancel={() => setAdding(false)}
-          addLabel="Add Meeting"
-        />
-      )}
-      <div className="gig-list">
-        {meetings.map(mtg => <MeetingItem key={mtg.id} mtg={mtg} today={today} refresh={refresh} categories={categories} openLogPopup={openLogPopup} />)}
-        {meetings.length === 0 && !adding && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>No meetings yet.</div>
-        )}
-      </div>
-    </>
-  );
-}
 
 function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
   const [editing, setEditing]     = useState(false);
