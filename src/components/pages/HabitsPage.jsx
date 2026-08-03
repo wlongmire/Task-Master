@@ -1,31 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getHabits, addHabit, updateHabit, setHabitDone, clearHabitDone, archiveHabit, habitStreak, habitPeriodProgress, getCategories, todayKey } from '../../db';
 
 const PERIOD_ABBR = { weekly: 'wk', monthly: 'mo' };
 const STREAK_UNIT = { daily: 'day', weekly: 'week', monthly: 'month' };
 
-function scheduleLabel(schedule) {
-  const s = schedule || { type: 'daily' };
-  if (s.type === 'weekly')  return `${s.target || 1}×/week`;
-  if (s.type === 'monthly') return `${s.target || 1}×/month`;
-  return 'Daily';
-}
-
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
-  useEffect(() => {
-    const h = () => setIsMobile(window.innerWidth <= 600);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
-  }, []);
-  return isMobile;
-}
-
 export default function HabitsPage({ viewDay, refresh, tick, openLogPopup }) {
   const today = todayKey();
   const day = viewDay || today;           // check-ins apply to the viewed day
   const isToday = day === today;
-  const isMobile = useIsMobile();
   const [adding, setAdding] = useState(false);
 
   const habits = useMemo(() => getHabits(), [tick]);
@@ -77,11 +59,7 @@ export default function HabitsPage({ viewDay, refresh, tick, openLogPopup }) {
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--text-dimmer)' }}>{isToday ? 'done today' : 'done this day'}</span>
         <div className="habit-progress-track"><div className="habit-progress-fill" style={{ width: `${pct}%` }} /></div>
       </div>
-      {isMobile ? (
-        <div className="habits-grid">{habitsCol}{doneCol}</div>
-      ) : (
-        <div className="habits-grid">{habitsCol}{doneCol}</div>
-      )}
+      <div className="habits-grid">{habitsCol}{doneCol}</div>
     </div>
   );
 }

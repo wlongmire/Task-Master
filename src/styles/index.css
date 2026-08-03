@@ -354,7 +354,7 @@ html, body {
 /* ── Habits ─────────────────────────────────────────────────────────────── */
 .habits-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; width: 100%; min-width: 0; align-items: start; }
 .habits-grid > * { min-width: 0; }
-@media (max-width: 600px) { .habits-grid { grid-template-columns: 1fr; row-gap: 20px; } }
+@media (max-width: 900px) { .habits-grid { grid-template-columns: 1fr; row-gap: 20px; } }
 .habit-progress-track { flex: 1; max-width: 240px; height: 6px; border-radius: 999px; background: var(--surface2); overflow: hidden; }
 .habit-progress-fill { height: 100%; background: var(--c-habits); transition: width 0.2s; }
 .habit-list { display: flex; flex-direction: column; gap: 6px; }
