@@ -1,14 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { getEvents, addEvent, updateEvent, addEventLogEntry, archiveEvent, deleteEvent, getMeetings, addMeeting, updateMeeting, addMeetingLogEntry, archiveMeeting, deleteMeeting, getCategories, todayKey } from '../../db';
 
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
+// Below this width the two aligned columns get cramped, so Gigs/Engagements
+// collapse to a single stacked column.
+const GIGS_STACK_WIDTH = 900;
+function useNarrow() {
+  const [narrow, setNarrow] = useState(() => window.innerWidth <= GIGS_STACK_WIDTH);
   useEffect(() => {
-    const h = () => setIsMobile(window.innerWidth <= 600);
+    const h = () => setNarrow(window.innerWidth <= GIGS_STACK_WIDTH);
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, []);
-  return isMobile;
+  return narrow;
 }
 
 function daysUntil(dateStr, today) {
@@ -80,7 +83,7 @@ function MonthHeader({ label, count, expanded, onToggle, onArchive, style }) {
 
 export default function GigsPage({ refresh, tick, openArchive, openLogPopup }) {
   const today = todayKey();
-  const isMobile = useIsMobile();
+  const narrow = useNarrow();
   const [addingGig, setAddingGig] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
 
@@ -126,11 +129,11 @@ export default function GigsPage({ refresh, tick, openArchive, openLogPopup }) {
   );
   const emptyNote = txt => <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dimmer)', padding: '20px 0' }}>{txt}</div>;
 
-  // Mobile: two independent stacked lists, each grouped by month on its own.
-  if (isMobile) {
+  // Narrow: two independent stacked lists, each grouped by month on its own.
+  if (narrow) {
     return (
       <div className="page">
-        <div className="page-grid">
+        <div className="page-grid single">
           <section className="section" id="section-gigs-list">
             {GigsHd}
             {addingGig && <GigAddForm categories={categories} refresh={refresh} onClose={() => setAddingGig(false)} />}
