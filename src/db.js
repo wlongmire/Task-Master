@@ -27,10 +27,10 @@ let _unsubs      = [];
 let _loaded      = new Set();
 let _readyCalled = false; // guards onReady so it fires at most once per session
 
-const COLLECTIONS = ['tasks', 'events', 'meetings', 'categories', 'grateful', 'intentions', 'briefings', 'reflections'];
+const COLLECTIONS = ['tasks', 'events', 'meetings', 'categories', 'habits', 'grateful', 'intentions', 'briefings', 'reflections'];
 
 let _cache = {
-  tasks: [], events: [], meetings: [], categories: [],
+  tasks: [], events: [], meetings: [], categories: [], habits: [],
   grateful: {}, intentions: {}, briefings: {}, reflections: {},
 };
 
@@ -102,10 +102,10 @@ export function initDB(uid, onRefresh, onReady) {
   // This keeps the offline snapshot fresh without touching every write function.
   _refreshFn   = () => { onRefresh(); _persistToLS(); };
   _onReadyFn   = onReady;
-  _cache       = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
+  _cache       = { tasks: [], events: [], meetings: [], categories: [], habits: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
 
   // Array collections
-  for (const col of ['tasks', 'events', 'meetings', 'categories']) {
+  for (const col of ['tasks', 'events', 'meetings', 'categories', 'habits']) {
     const unsub = onSnapshot(_userCol(col), snap => {
       _cache[col] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       _markLoaded(col);
@@ -128,7 +128,7 @@ export function initDB(uid, onRefresh, onReady) {
   // visibility restore or network reconnect so data is never stale.
   const resync = () => {
     if (document.hidden || !_uid) return;
-    const arrayCols = ['tasks', 'events', 'meetings', 'categories'];
+    const arrayCols = ['tasks', 'events', 'meetings', 'categories', 'habits'];
     const mapCols   = ['grateful', 'intentions', 'briefings', 'reflections'];
     Promise.all([
       ...arrayCols.map(col =>
@@ -148,7 +148,7 @@ export function initDB(uid, onRefresh, onReady) {
   document.addEventListener('visibilitychange', resync);
   window.addEventListener('online', resync);
 
-  // Offline fallback — if Firestore hasn't delivered all 8 collections within
+  // Offline fallback — if Firestore hasn't delivered all collections within
   // 8 seconds (slow network, Firebase outage, etc.), load the most recent
   // localStorage snapshot so the app isn't blank. The Firestore listeners keep
   // running; when they fire they overwrite the cache and refresh the UI.
@@ -192,7 +192,7 @@ export function initMockDB(onRefresh, onReady) {
   return () => {
     _mock = false; _uid = null; _refreshFn = null; _onReadyFn = null;
     _readyCalled = false;
-    _cache = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
+    _cache = { tasks: [], events: [], meetings: [], categories: [], habits: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
   };
 }
 
@@ -235,6 +235,21 @@ function _seedMock() {
     meetings: [
       { id: 'm1', name: 'Design sync', date: today, time: '14:30', archived: false, done: false, categoryId: 'c-work', log: [] },
     ],
+    habits: (() => {
+      const y1 = offsetDate(today, -1), y2 = offsetDate(today, -2), y3 = offsetDate(today, -3);
+      const habit = (id, text, categoryId, doneDays, sort, schedule = { type: 'daily' }) => ({
+        id, text, categoryId, archived: false, sortOrder: now + sort, createdAt: now, schedule,
+        completions: Object.fromEntries(doneDays.map(dk => [dk, { completedAt: now, note: null }])),
+      });
+      return [
+        habit('h1', 'Meditate', 'c-home', [today, y1, y2, y3], 1),
+        habit('h2', 'Exercise', 'c-home', [today, y1, y2], 2, { type: 'weekly', target: 3 }),
+        habit('h3', 'Read 20 min', 'c-home', [today, y1, y2, y3], 3),
+        habit('h4', 'Journal', 'c-home', [], 4),
+        habit('h5', 'Drink water', 'c-home', [today, y1], 5),
+        habit('h6', 'Deep clean', 'c-home', [y1], 6, { type: 'monthly', target: 1 }),
+      ];
+    })(),
     grateful: {}, intentions: {}, briefings: {}, reflections: {},
   };
 }
@@ -551,6 +566,105 @@ export function deleteMeeting(id)  {
   _refreshFn?.();
 }
 
+// ── Habits ──────────────────────────────────────────────────────────────────
+// A habit is a recurring daily item. `completions` is a date-keyed map
+// ({ 'YYYY-MM-DD': { completedAt, note } }) — the same shape powers both the
+// "done today" state and the streak count. Habits persist; they are archived,
+// not deleted, in the normal flow.
+export function getHabits() {
+  return [..._cache.habits].filter(h => !h.archived).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+}
+export function addHabit(habit) {
+  const id = genId();
+  const newHabit = { id, sortOrder: Date.now(), createdAt: Date.now(), completions: {}, archived: false, ...habit };
+  _cache.habits = [..._cache.habits, newHabit];
+  _set(_userDoc('habits', id), clean(newHabit));
+  _refreshFn?.();
+  return newHabit;
+}
+export function updateHabit(id, updates) {
+  _cache.habits = _cache.habits.map(h => h.id === id ? { ...h, ...updates } : h);
+  _update(_userDoc('habits', id), clean(updates));
+  _refreshFn?.();
+}
+export function setHabitDone(id, dayKey, note = null) {
+  const h = _cache.habits.find(x => x.id === id);
+  if (!h) return;
+  const completions = { ...(h.completions || {}), [dayKey]: { completedAt: Date.now(), note } };
+  updateHabit(id, { completions });
+}
+export function clearHabitDone(id, dayKey) {
+  const h = _cache.habits.find(x => x.id === id);
+  if (!h || !h.completions || !(dayKey in h.completions)) return;
+  const completions = { ...h.completions };
+  delete completions[dayKey];
+  updateHabit(id, { completions });
+}
+export function archiveHabit(id) { updateHabit(id, { archived: true, archivedAt: Date.now() }); }
+export function deleteHabit(id)  {
+  _cache.habits = _cache.habits.filter(h => h.id !== id);
+  _delete(_userDoc('habits', id));
+  _refreshFn?.();
+}
+// ── Habit schedules ──────────────────────────────────────────────────────
+// schedule: { type:'daily' } | { type:'weekly', target } | { type:'monthly', target }
+// A "period" is a day / calendar week (Sunday-start) / calendar month; a period
+// is "met" when its completion count reaches the target (daily target = 1).
+function _weekStart(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() - d.getDay()); // back up to Sunday
+  return dateKey(d);
+}
+function _periodKey(dateStr, type) {
+  if (type === 'weekly')  return _weekStart(dateStr);
+  if (type === 'monthly') return dateStr.slice(0, 7); // YYYY-MM
+  return dateStr;
+}
+function _prevPeriod(pk, type) {
+  if (type === 'weekly')  return offsetDate(pk, -7);
+  if (type === 'monthly') {
+    const [y, m] = pk.split('-').map(Number);
+    const d = new Date(y, m - 1, 1);
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  return offsetDate(pk, -1);
+}
+function _periodCounts(completions, type) {
+  const counts = {};
+  for (const dk of Object.keys(completions || {})) {
+    const pk = _periodKey(dk, type);
+    counts[pk] = (counts[pk] || 0) + 1;
+  }
+  return counts;
+}
+function _habitTarget(habit) {
+  const s = habit.schedule || { type: 'daily' };
+  return s.type === 'daily' ? 1 : (s.target || 1);
+}
+
+// Current-period progress: { type, count, target }.
+export function habitPeriodProgress(habit, today = todayKey()) {
+  const type = habit.schedule?.type || 'daily';
+  const counts = _periodCounts(habit.completions, type);
+  return { type, count: counts[_periodKey(today, type)] || 0, target: _habitTarget(habit) };
+}
+
+// Consecutive periods that hit the target, counting back from the current
+// period, with grace for the current in-progress period (so the streak doesn't
+// reset before the period is over). Daily habits reduce to consecutive days.
+export function habitStreak(habit, today = todayKey()) {
+  const type = habit.schedule?.type || 'daily';
+  const target = _habitTarget(habit);
+  const counts = _periodCounts(habit.completions, type);
+  const met = pk => (counts[pk] || 0) >= target;
+  let cursor = _periodKey(today, type);
+  if (!met(cursor)) cursor = _prevPeriod(cursor, type); // grace for current period
+  let streak = 0;
+  while (met(cursor)) { streak++; cursor = _prevPeriod(cursor, type); }
+  return streak;
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 export function exportData() {
   const payload = JSON.stringify({
@@ -559,6 +673,7 @@ export function exportData() {
     events:     _cache.events,
     meetings:   _cache.meetings,
     categories: _cache.categories,
+    habits:     _cache.habits,
     grateful:   _cache.grateful,
     intentions: _cache.intentions,
     briefings:  _cache.briefings,
@@ -609,6 +724,9 @@ export function importData(file) {
         const categories = (data.categories || []).map(t => [_userDoc('categories', t.id), clean(t)]);
         await commitChunks(categories);
 
+        const habits = (data.habits || []).map(t => [_userDoc('habits', t.id), clean(t)]);
+        await commitChunks(habits);
+
         const grateful   = Object.entries(data.grateful   || {}).map(([dk, v]) => [_userDoc('grateful',   dk), clean(v)]);
         const intentions = Object.entries(data.intentions || {}).map(([dk, v]) => [_userDoc('intentions', dk), clean(v)]);
         const briefings  = Object.entries(data.briefings  || {}).map(([dk, v]) => [_userDoc('briefings',  dk), clean(v)]);
@@ -627,7 +745,7 @@ export function importData(file) {
 
 // ── Clear all data ────────────────────────────────────────────────────────────
 export function clearAllData() {
-  _cache = { tasks: [], events: [], meetings: [], categories: [], grateful: {}, intentions: {}, briefings: {} };
+  _cache = { tasks: [], events: [], meetings: [], categories: [], habits: [], grateful: {}, intentions: {}, briefings: {}, reflections: {} };
   _refreshFn?.();
   COLLECTIONS.forEach(async col => {
     const snap  = await getDocs(_userCol(col));

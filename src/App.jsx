@@ -12,6 +12,7 @@ import DailyPage from './components/pages/DailyPage';
 import TodoPage from './components/pages/TodoPage';
 import ActivePage from './components/pages/ActivePage';
 import GigsPage from './components/pages/GigsPage';
+import HabitsPage from './components/pages/HabitsPage';
 import ArchiveOverlay from './components/shared/ArchiveOverlay';
 import LogPopup from './components/shared/LogPopup';
 import { scheduleOutlinerFocus } from './components/shared/Outliner';
@@ -21,6 +22,7 @@ const PAGE_META = {
   todo:   { title: 'To Do',           archiveTab: 'activity', subtitle: '· active list + backlog' },
   active: { title: 'Active',          archiveTab: 'activity', subtitle: '· in flight + finished' },
   gigs:   { title: 'Gigs & Engagements', archiveTab: 'events',   subtitle: '· upcoming · sorted by date' },
+  habits: { title: 'Habits',          archiveTab: 'activity', subtitle: '· daily · streaks' },
 };
 
 function useIsMobile() {
@@ -75,7 +77,7 @@ export default function App() {
   }, []);
 
   // ── Keyboard page navigation ─────────────────────────────────────────────
-  const PAGES = ['daily', 'todo', 'active', 'gigs'];
+  const PAGES = ['daily', 'todo', 'active', 'gigs', 'habits'];
   useEffect(() => {
     const handler = (e) => {
       if (!e.metaKey && !e.ctrlKey) return;
@@ -145,6 +147,7 @@ export default function App() {
             { id: 'section-completed',    label: 'Completed',    color: 'var(--c-completed)' },
             { id: 'section-gigs-list',    label: 'Gigs',         color: 'var(--c-gigs)' },
             { id: 'section-meetings-list',label: 'Engagements',  color: 'var(--c-inprogress)' },
+            { id: 'section-habits-list',  label: 'Habits',       color: 'var(--c-habits)' },
           ].map(({ id, label, color }) => (
             <button key={id} className="mobile-nav-pill" onClick={() => {
               document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -161,6 +164,7 @@ export default function App() {
               <div id="section-todo"><TodoPage   {...pageProps} /></div>
               <div id="section-active"><ActivePage {...pageProps} /></div>
               <div id="section-gigs"><GigsPage {...pageProps} /></div>
+              <div id="section-habits"><HabitsPage {...pageProps} /></div>
             </>
           ) : (
             <>
@@ -168,6 +172,7 @@ export default function App() {
               {page === 'todo'   && <TodoPage   {...pageProps} onPageEnd={() => { focusFirstTask('inprogress'); setPage('active'); }} onPageStart={() => setPage('daily')} />}
               {page === 'active' && <ActivePage {...pageProps} onPageEnd={() => setPage('gigs')} onPageStart={() => { focusLastTask('todo'); setPage('todo'); }} />}
               {page === 'gigs'   && <GigsPage   {...pageProps} />}
+              {page === 'habits' && <HabitsPage {...pageProps} />}
             </>
           )}
         </div>

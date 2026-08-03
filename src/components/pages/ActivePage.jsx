@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import Outliner from '../shared/Outliner';
-import { getTasks, getCategories, restoreTask, archiveTask, todayKey } from '../../db';
+import { getTasks, getHabits, getCategories, restoreTask, archiveTask, todayKey } from '../../db';
 
 export default function ActivePage({ viewDay, refresh, tick, openArchive, openLogPopup, onPageEnd, onPageStart }) {
   return (
@@ -61,13 +61,22 @@ function CompletedList({ tick, refresh, viewDay }) {
       });
     });
 
+    // Habit completions — one entry per completed day, keyed by that day
+    getHabits().forEach(h => {
+      Object.entries(h.completions || {}).forEach(([dk, entry]) => {
+        if (!byDay[dk]) byDay[dk] = [];
+        byDay[dk].push({ kind: 'habit', habit: h, entry, dk });
+      });
+    });
+
+    const itemTime = it =>
+      it.kind === 'completed' ? (it.task.dateCompleted || 0)
+      : it.kind === 'habit'   ? (it.entry.completedAt || 0)
+      : it.entry.loggedAt;
+
     // Sort each day's entries by timestamp descending (most recent first)
     Object.values(byDay).forEach(entries => {
-      entries.sort((a, b) => {
-        const aTime = a.kind === 'completed' ? (a.task.dateCompleted || 0) : a.entry.loggedAt;
-        const bTime = b.kind === 'completed' ? (b.task.dateCompleted || 0) : b.entry.loggedAt;
-        return bTime - aTime;
-      });
+      entries.sort((a, b) => itemTime(b) - itemTime(a));
     });
 
     return Object.entries(byDay).sort((a, b) => b[0].localeCompare(a[0]));
@@ -109,7 +118,9 @@ function CompletedList({ tick, refresh, viewDay }) {
             {isExpanded && tasks.map(item =>
               item.kind === 'completed'
                 ? <CompletedItem key={item.task.id} task={item.task} refresh={refresh} viewDay={viewDay} categories={categories} />
-                : <ProgressItem key={item.entry.id} task={item.task} entry={item.entry} />
+                : item.kind === 'habit'
+                  ? <HabitCompletedItem key={`${item.habit.id}-${item.dk}`} habit={item.habit} entry={item.entry} />
+                  : <ProgressItem key={item.entry.id} task={item.task} entry={item.entry} />
             )}
           </div>
         );
@@ -170,6 +181,23 @@ function CompletedItem({ task, refresh, viewDay, categories }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function HabitCompletedItem({ habit, entry }) {
+  const timeStr = entry.completedAt ? new Date(entry.completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+  return (
+    <div className="comp-item" style={{ gap: 8 }}>
+      <div className="comp-check" style={{ flexShrink: 0, background: 'var(--c-habits)', borderColor: 'var(--c-habits)' }} />
+      <div className="comp-title" style={{ flex: 1 }}>{habit.text}</div>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--c-habits)', border: '1px solid var(--c-habits)', borderRadius: 3, padding: '1px 5px', opacity: 0.8, flexShrink: 0 }}>habit</span>
+      {entry.note && (
+        <div className="comp-meta comp-note" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {entry.note}
+        </div>
+      )}
+      <div className="comp-meta comp-time" style={{ flexShrink: 0 }}>{timeStr}</div>
     </div>
   );
 }

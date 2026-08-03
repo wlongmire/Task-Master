@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useRef } from 'react';
 import MiniCalendar from './shared/MiniCalendar';
 import TopicPopup from './shared/TopicPopup';
-import { getTasks, getEvents, getCategories, getArchivedCategories, addCategory, updateCategory, archiveCategory, restoreCategory, deleteCategory, todayKey, offsetDate, exportData, importData, clearAllData } from '../db';
+import { getTasks, getEvents, getHabits, getCategories, getArchivedCategories, addCategory, updateCategory, archiveCategory, restoreCategory, deleteCategory, todayKey, offsetDate, exportData, importData, clearAllData } from '../db';
 
 const PAGES = [
   { id: 'daily',  label: 'Daily',      color: 'var(--c-grateful)' },
   { id: 'todo',   label: 'To Do',      color: 'var(--c-todo)' },
   { id: 'active', label: 'Active',     color: 'var(--c-inprogress)' },
   { id: 'gigs',   label: 'Gigs',       color: 'var(--c-gigs)' },
+  { id: 'habits', label: 'Habits',     color: 'var(--c-habits)' },
 ];
 
 const TOPIC_COLORS = [
@@ -71,11 +72,13 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
   const counts = useMemo(() => {
     const tasks = getTasks().filter(t => !t.archived);
     const events = getEvents().filter(e => !e.archived);
+    const habits = getHabits();
     return {
       todo:       tasks.filter(t => t.state === 'todo').length,
       backlog:    tasks.filter(t => t.state === 'backlog').length,
       inprogress: tasks.filter(t => t.state === 'inprogress').length,
       gigs:       events.filter(e => !e.done).length,
+      habits:     habits.filter(h => !h.completions?.[today]).length, // still to do today
     };
   }, [tick]);
 
@@ -83,6 +86,7 @@ export default function Sidebar({ page, setPage, viewDay, setViewDay, tick, onCl
     todo:   counts.todo + counts.backlog,
     active: counts.inprogress,
     gigs:   counts.gigs,
+    habits: counts.habits,
   };
 
   const prevDay = () => setViewDay(d => offsetDate(d, -1));
