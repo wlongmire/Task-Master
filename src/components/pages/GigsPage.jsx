@@ -465,6 +465,11 @@ function MeetingItem({ mtg, today, refresh, categories, openLogPopup }) {
 // ── Shared components ─────────────────────────────────────────────────────────
 
 function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime, location, setLocation, notes, setNotes, categoryId, setCategoryId, categories, onAdd, onCancel, addLabel }) {
+  const [attempted, setAttempted] = useState(false);
+  const missingName = attempted && !name.trim();
+  const missingDate = attempted && !date;
+  const tryAdd = () => { setAttempted(true); onAdd(); };
+  const borderFor = missing => `1px solid ${missing ? '#e05050' : 'var(--border2)'}`;
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -473,15 +478,15 @@ function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime,
           placeholder={namePlaceholder}
           value={name}
           onChange={e => setName(e.target.value)}
-          style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }}
-          onKeyDown={e => { if (e.key === 'Enter') onAdd(); if (e.key === 'Escape') onCancel(); }}
+          style={{ flex: 1, background: 'var(--surface2)', border: borderFor(missingName), borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 13, padding: '5px 9px', outline: 'none' }}
+          onKeyDown={e => { if (e.key === 'Enter') tryAdd(); if (e.key === 'Escape') onCancel(); }}
         />
         <input
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
           onBlur={e => setDate(e.target.value)}
-          style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }}
+          style={{ background: 'var(--surface2)', border: borderFor(missingDate), borderRadius: 4, color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', outline: 'none', colorScheme: 'dark' }}
         />
         {setTime !== undefined && (
           <input
@@ -519,9 +524,14 @@ function AddForm({ namePlaceholder, name, setName, date, setDate, time, setTime,
           </select>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+        {(missingName || missingDate) && (
+          <span style={{ marginRight: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#e05050' }}>
+            {missingName && missingDate ? 'Name and date are required' : missingName ? 'Name is required' : 'Pick a date'}
+          </span>
+        )}
         <button className="btn ghost" onClick={onCancel}>Cancel</button>
-        <button className="btn primary" onClick={onAdd}>{addLabel}</button>
+        <button className="btn primary" onClick={tryAdd}>{addLabel}</button>
       </div>
     </div>
   );
