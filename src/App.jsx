@@ -77,7 +77,7 @@ export default function App() {
   }, []);
 
   // ── Keyboard page navigation ─────────────────────────────────────────────
-  const PAGES = ['daily', 'todo', 'active', 'gigs', 'habits'];
+  const PAGES = ['daily', 'todo', 'active', 'habits', 'gigs'];
   useEffect(() => {
     const handler = (e) => {
       if (!e.metaKey && !e.ctrlKey) return;
@@ -145,9 +145,9 @@ export default function App() {
             { id: 'section-todo-list',    label: 'Todo',         color: 'var(--c-todo)' },
             { id: 'section-inprogress',   label: 'In Progress',  color: 'var(--c-inprogress)' },
             { id: 'section-completed',    label: 'Completed',    color: 'var(--c-completed)' },
+            { id: 'section-habits-list',  label: 'Habits',       color: 'var(--c-habits)' },
             { id: 'section-gigs-list',    label: 'Gigs',         color: 'var(--c-gigs)' },
             { id: 'section-meetings-list',label: 'Engagements',  color: 'var(--c-inprogress)' },
-            { id: 'section-habits-list',  label: 'Habits',       color: 'var(--c-habits)' },
           ].map(({ id, label, color }) => (
             <button key={id} className="mobile-nav-pill" onClick={() => {
               document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -163,16 +163,16 @@ export default function App() {
               <div id="section-daily"><DailyPage  {...pageProps} /></div>
               <div id="section-todo"><TodoPage   {...pageProps} /></div>
               <div id="section-active"><ActivePage {...pageProps} /></div>
-              <div id="section-gigs"><GigsPage {...pageProps} /></div>
               <div id="section-habits"><HabitsPage {...pageProps} /></div>
+              <div id="section-gigs"><GigsPage {...pageProps} /></div>
             </>
           ) : (
             <>
               {page === 'daily'  && <DailyPage  {...pageProps} />}
               {page === 'todo'   && <TodoPage   {...pageProps} onPageEnd={() => { focusFirstTask('inprogress'); setPage('active'); }} onPageStart={() => setPage('daily')} />}
-              {page === 'active' && <ActivePage {...pageProps} onPageEnd={() => setPage('gigs')} onPageStart={() => { focusLastTask('todo'); setPage('todo'); }} />}
-              {page === 'gigs'   && <GigsPage   {...pageProps} />}
+              {page === 'active' && <ActivePage {...pageProps} onPageEnd={() => setPage('habits')} onPageStart={() => { focusLastTask('todo'); setPage('todo'); }} />}
               {page === 'habits' && <HabitsPage {...pageProps} />}
+              {page === 'gigs'   && <GigsPage   {...pageProps} />}
             </>
           )}
         </div>

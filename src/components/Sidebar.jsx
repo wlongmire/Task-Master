@@ -7,8 +7,8 @@ const PAGES = [
   { id: 'daily',  label: 'Daily',      color: 'var(--c-grateful)' },
   { id: 'todo',   label: 'To Do',      color: 'var(--c-todo)' },
   { id: 'active', label: 'Active',     color: 'var(--c-inprogress)' },
-  { id: 'gigs',   label: 'Gigs',       color: 'var(--c-gigs)' },
   { id: 'habits', label: 'Habits',     color: 'var(--c-habits)' },
+  { id: 'gigs',   label: 'Gigs',       color: 'var(--c-gigs)' },
 ];
 
 const TOPIC_COLORS = [
