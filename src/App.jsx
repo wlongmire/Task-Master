@@ -43,7 +43,7 @@ export default function App() {
   const [page,       setPage]       = useState('daily');
   const [viewDay,    setViewDay]    = useState(todayKey());
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [archiveTab,  setArchiveTab]  = useState('activity');
+  const [archiveTab,  setArchiveTab]  = useState('reflections');
   const [logPopup,    setLogPopup]    = useState(null);
   const [tick,        setTick]        = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -102,7 +102,7 @@ export default function App() {
     if (tasks.length) scheduleOutlinerFocus(tasks[tasks.length - 1].id);
   }, []);
 
-  const openArchive   = useCallback((tab = 'grateful') => { setArchiveTab(tab); setArchiveOpen(true); }, []);
+  const openArchive   = useCallback((tab = 'reflections') => { setArchiveTab(tab); setArchiveOpen(true); }, []);
   const openLogPopup  = useCallback((taskId, type, onDone, title) => setLogPopup({ taskId, type, onDone, title }), []);
   const closeLogPopup = useCallback(() => setLogPopup(null), []);
 

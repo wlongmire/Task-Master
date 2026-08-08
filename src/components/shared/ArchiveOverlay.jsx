@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { getGratefulDays, getGrateful, getIntentionsDays, getIntentions, getReflectionDays, getReflection, getTasks, getEvents, getMeetings, formatDateShort, todayKey } from '../../db';
 
-const TABS = ['activity', 'grateful', 'intentions', 'reflections', 'events'];
+const TABS = ['reflections', 'activity', 'grateful', 'intentions', 'events'];
 
 const TAB_LABELS = { activity: 'Activity', grateful: 'Grateful', intentions: 'Intentions', reflections: 'Reflection', events: 'Events' };
 

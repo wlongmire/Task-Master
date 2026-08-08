@@ -60,9 +60,25 @@ function NotebookSection({ title, colorVar, label, placeholder, hint, value, onC
   );
 }
 
-function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onArchive }) {
+function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, onArchive }) {
+  const draftKey = `tm_refl_draft_${dayKey}`;
   const [draft, setDraft] = useState('');
   const draftRef = useRef();
+
+  // Persist the in-progress entry per day so it survives navigation/reload
+  // until it's logged. Restore whenever the viewed day changes.
+  useEffect(() => {
+    setDraft(isToday ? (localStorage.getItem(draftKey) || '') : '');
+  }, [draftKey, isToday]);
+
+  const updateDraft = (v) => {
+    setDraft(v);
+    if (!isToday) return;
+    try {
+      if (v) localStorage.setItem(draftKey, v);
+      else localStorage.removeItem(draftKey);
+    } catch { /* ignore quota/availability errors */ }
+  };
 
   useEffect(() => {
     if (draftRef.current) {
@@ -76,6 +92,7 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onArchiv
     if (!text) return;
     onAdd(text);
     setDraft('');
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
   };
 
   const handleDraftKey = (e) => {
@@ -99,7 +116,7 @@ function ReflectionLog({ isToday, entries, legacyText, onAdd, onDelete, onArchiv
               className="refl-draft"
               placeholder="What's happening, what you're feeling, what you'd do differently..."
               value={draft}
-              onChange={e => setDraft(e.target.value)}
+              onChange={e => updateDraft(e.target.value)}
               onKeyDown={handleDraftKey}
               rows={5}
             />
@@ -210,6 +227,7 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
         <div id="section-reflections">
           <ReflectionLog
             isToday={isToday}
+            dayKey={viewDay}
             entries={reflectionData.entries || []}
             legacyText={reflectionData._legacyText}
             onAdd={handleAddEntry}
