@@ -1,5 +1,26 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { getGrateful, setGrateful, getIntentions, setIntentions, getReflection, addReflectionEntry, deleteReflectionEntry, todayKey } from '../../db';
+import Modal from '../shared/Modal';
+
+function ReflectionPopup({ entry, canDelete, onDelete, onClose }) {
+  const stamp = entry.createdAt
+    ? new Date(entry.createdAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : 'Reflection';
+  return (
+    <Modal onClose={onClose} variant="center" style={{ width: 460, maxWidth: '92vw', padding: '20px 22px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-reflection)' }}>{stamp}</div>
+      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '60vh', overflowY: 'auto' }}>
+        {entry.text}
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+        {canDelete && (
+          <button className="btn" onClick={onDelete} style={{ background: 'transparent', borderColor: '#e05050', color: '#e05050' }}>Delete</button>
+        )}
+        <button className="btn ghost" onClick={onClose}>Close</button>
+      </div>
+    </Modal>
+  );
+}
 
 const _reflRafs = new WeakMap();
 function startReflScroll(wrapper) {
@@ -63,6 +84,7 @@ function NotebookSection({ title, colorVar, label, placeholder, hint, value, onC
 function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, onArchive }) {
   const draftKey = `tm_refl_draft_${dayKey}`;
   const [draft, setDraft] = useState('');
+  const [reading, setReading] = useState(null);
   const draftRef = useRef();
 
   // Persist the in-progress entry per day so it survives navigation/reload
@@ -128,7 +150,7 @@ function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, 
             {sorted.map(entry => {
               const timeStr = new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
               return (
-                <div key={entry.id} className="refl-entry">
+                <div key={entry.id} className="refl-entry" style={{ cursor: 'pointer' }} onClick={() => setReading(entry)}>
                   <span className="refl-time">{timeStr}</span>
                   <div
                     style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
@@ -137,14 +159,11 @@ function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, 
                   >
                     <span className="refl-text-inner">{entry.text}</span>
                   </div>
-                  {isToday && (
-                    <button className="refl-delete" onClick={() => onDelete(entry.id)}>×</button>
-                  )}
                 </div>
               );
             })}
             {legacyText && (
-              <div className="refl-entry refl-entry-legacy">
+              <div className="refl-entry refl-entry-legacy" style={{ cursor: 'pointer' }} onClick={() => setReading({ text: legacyText, createdAt: null, _legacy: true })}>
                 <span className="refl-time refl-legacy-label">legacy</span>
                 <div
                   style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
@@ -156,6 +175,14 @@ function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, 
               </div>
             )}
           </div>
+        )}
+        {reading && (
+          <ReflectionPopup
+            entry={reading}
+            canDelete={isToday && !reading._legacy}
+            onDelete={() => { onDelete(reading.id); setReading(null); }}
+            onClose={() => setReading(null)}
+          />
         )}
         <div className="nb-footer" style={{ padding: '8px 12px' }}>
           <span className="nb-hint">{isToday ? 'Cmd+Enter to log' : 'Read-only — past day'}</span>
