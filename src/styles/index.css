@@ -374,6 +374,8 @@ html, body {
 .habit-body { flex: 1; min-width: 0; }
 .habit-name { font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: var(--text); }
 .habit-name.done { color: var(--text-dim); }
+.habit-since { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.04em; color: var(--text-dimmer); margin-top: 3px; }
+.habit-since.lapsed { color: var(--c-intentions); opacity: 0.85; }
 .habit-tag { font-family: var(--font-mono); font-size: 8px; color: var(--c-habits); border: 1px solid var(--c-habits); border-radius: 3px; padding: 1px 5px; opacity: 0.8; flex-shrink: 0; }
 .habit-prog { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.04em; color: var(--text-dimmer); border: 1px solid var(--border2); border-radius: 999px; padding: 2px 8px; flex-shrink: 0; }
 .habit-prog.met { color: var(--c-habits); border-color: var(--c-habits); }

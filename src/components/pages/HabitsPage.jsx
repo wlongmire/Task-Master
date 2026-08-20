@@ -4,6 +4,29 @@ import { getHabits, addHabit, updateHabit, setHabitDone, clearHabitDone, archive
 const PERIOD_ABBR = { weekly: 'wk', monthly: 'mo' };
 const STREAK_UNIT = { daily: 'day', weekly: 'week', monthly: 'month' };
 
+// Most recent completion date (YYYY-MM-DD) for a habit, or null.
+function lastDoneKey(habit) {
+  const keys = Object.keys(habit.completions || {});
+  return keys.length ? keys.sort()[keys.length - 1] : null;
+}
+
+// "how long since last engaged" — text + whether it's lapsed past its cadence.
+function sinceInfo(habit, today) {
+  const last = lastDoneKey(habit);
+  if (!last) return { text: 'never done', lapsed: true };
+  const days = Math.round((new Date(today + 'T00:00:00') - new Date(last + 'T00:00:00')) / 86400000);
+  if (days <= 0) return { text: 'done today', lapsed: false };
+  const type = habit.schedule?.type || 'daily';
+  const periodLen = type === 'monthly' ? 31 : type === 'weekly' ? 7 : 1;
+  let rel;
+  if (days === 1) rel = 'yesterday';
+  else if (days < 7) rel = `${days} days ago`;
+  else if (days < 31) { const w = Math.round(days / 7); rel = `${w} week${w !== 1 ? 's' : ''} ago`; }
+  else if (days < 365) { const m = Math.round(days / 30); rel = `${m} month${m !== 1 ? 's' : ''} ago`; }
+  else { const y = Math.round(days / 365); rel = `${y} year${y !== 1 ? 's' : ''} ago`; }
+  return { text: `last done ${rel}`, lapsed: days > periodLen };
+}
+
 export default function HabitsPage({ viewDay, refresh, tick, openLogPopup }) {
   const today = todayKey();
   const day = viewDay || today;           // check-ins apply to the viewed day
@@ -74,6 +97,7 @@ function HabitRow({ habit, day, today, categories, refresh, openLogPopup }) {
   const periodic = prog.type !== 'daily';
   const met = prog.count >= prog.target;
   const cat = habit.categoryId ? (categories || []).find(c => c.id === habit.categoryId) : null;
+  const since = sinceInfo(habit, today);
 
   const toggle = () => {
     if (done) { clearHabitDone(habit.id, day); refresh(); }
@@ -92,6 +116,7 @@ function HabitRow({ habit, day, today, categories, refresh, openLogPopup }) {
           <span className={`habit-name${done ? ' done' : ''}`}>{habit.text}</span>
           {cat && <span className="habit-tag">{cat.name}</span>}
         </div>
+        <div className={`habit-since${since.lapsed ? ' lapsed' : ''}`}>{since.text}</div>
       </div>
       {periodic && (
         <span className={`habit-prog${met ? ' met' : ''}`} title={`${prog.count} of ${prog.target} this ${STREAK_UNIT[prog.type]}`}>
