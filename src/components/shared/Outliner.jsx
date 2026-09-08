@@ -357,9 +357,17 @@ export default function Outliner({ listState, viewDay, refresh, openLogPopup, on
           catId={addModal.catId}
           initialText={addModal.initialText}
           categories={categories}
-          onAdd={(text, catId, extras) => {
-            const newTask = addTask({ text, state: listState, categoryId: catId || null, dayKey: listState === 'todo' ? viewDay : undefined, ...extras });
-            _pendingFocus = newTask.id;
+          onAdd={(text, catId, extras, complete) => {
+            const newTask = addTask({
+              text,
+              state: complete ? 'completed' : listState,
+              categoryId: catId || null,
+              dayKey: (!complete && listState === 'todo') ? viewDay : undefined,
+              ...(complete ? { dateCompleted: Date.now() } : {}),
+              ...extras,
+            });
+            if (complete) addLogEntry(newTask.id, { type: 'done' });
+            _pendingFocus = complete ? null : newTask.id;
             refresh();
             setAddModal(null);
           }}
@@ -388,14 +396,20 @@ function AddTaskModal({ listState, catId, initialText, categories, onAdd, onClos
     try { el.setSelectionRange(len, len); } catch (_) {}
   }, []);
 
+  const buildExtras = () => ({
+    ...(description.trim() ? { description: description.trim() } : {}),
+    ...(dueDate ? { dueDate } : {}),
+    ...(urgent ? { urgent: true } : {}),
+  });
+
   const handleSubmit = () => {
     if (!text.trim()) return;
-    const extras = {
-      ...(description.trim() ? { description: description.trim() } : {}),
-      ...(dueDate ? { dueDate } : {}),
-      ...(urgent ? { urgent: true } : {}),
-    };
-    onAdd(text.trim(), selectedCat || null, extras);
+    onAdd(text.trim(), selectedCat || null, buildExtras());
+  };
+
+  const handleComplete = () => {
+    if (!text.trim()) return;
+    onAdd(text.trim(), selectedCat || null, buildExtras(), true);
   };
 
   const stateLabel = listState === 'todo' ? 'To Do' : listState === 'backlog' ? 'Backlog' : 'In Progress';
@@ -511,15 +525,20 @@ function AddTaskModal({ listState, catId, initialText, categories, onAdd, onClos
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
           <button onClick={onClose} style={{
-            flex: 1, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 500,
-            padding: '12px', borderRadius: 8, border: '1px solid var(--border2)',
+            flex: '0 0 auto', fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 500,
+            padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border2)',
             background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer',
           }}>Cancel</button>
           <button onClick={handleSubmit} style={{
-            flex: 2, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 600,
+            flex: 1, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 600,
             padding: '12px', borderRadius: 8, border: 'none',
             background: accentColor, color: '#000', cursor: 'pointer',
           }}>Add Task</button>
+          <button onClick={handleComplete} title="Add this task already completed" style={{
+            flex: 1, fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 600,
+            padding: '12px', borderRadius: 8, border: 'none',
+            background: 'var(--c-completed)', color: '#000', cursor: 'pointer',
+          }}>✓ Complete</button>
         </div>
     </Modal>
   );
