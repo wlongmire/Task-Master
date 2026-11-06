@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { getGrateful, setGrateful, getIntentions, setIntentions, getReflection, addReflectionEntry, deleteReflectionEntry, todayKey } from '../../db';
+import { getGrateful, setGrateful, getIntentions, setIntentions, getReflection, setReflectionCurrent, addReflectionEntry, deleteReflectionEntry, todayKey } from '../../db';
 import Modal from '../shared/Modal';
 
 function ReflectionPopup({ entry, canDelete, onDelete, onClose }) {
@@ -81,40 +81,21 @@ function NotebookSection({ title, colorVar, label, placeholder, hint, value, onC
   );
 }
 
-function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, onArchive }) {
-  const draftKey = `tm_refl_draft_${dayKey}`;
-  const [draft, setDraft] = useState('');
+function ReflectionLog({ isToday, current, onCurrentChange, entries, legacyText, onLog, onDelete, onArchive }) {
   const [reading, setReading] = useState(null);
   const draftRef = useRef();
-
-  // Persist the in-progress entry per day so it survives navigation/reload
-  // until it's logged. Restore whenever the viewed day changes.
-  useEffect(() => {
-    setDraft(isToday ? (localStorage.getItem(draftKey) || '') : '');
-  }, [draftKey, isToday]);
-
-  const updateDraft = (v) => {
-    setDraft(v);
-    if (!isToday) return;
-    try {
-      if (v) localStorage.setItem(draftKey, v);
-      else localStorage.removeItem(draftKey);
-    } catch { /* ignore quota/availability errors */ }
-  };
 
   useEffect(() => {
     if (draftRef.current) {
       draftRef.current.style.height = 'auto';
       draftRef.current.style.height = draftRef.current.scrollHeight + 'px';
     }
-  }, [draft]);
+  }, [current]);
 
   const handleSubmit = () => {
-    const text = draft.trim();
+    const text = (current || '').trim();
     if (!text) return;
-    onAdd(text);
-    setDraft('');
-    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+    onLog(text);
   };
 
   const handleDraftKey = (e) => {
@@ -137,12 +118,12 @@ function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, 
               ref={draftRef}
               className="refl-draft"
               placeholder="What's happening, what you're feeling, what you'd do differently..."
-              value={draft}
-              onChange={e => updateDraft(e.target.value)}
+              value={current}
+              onChange={e => onCurrentChange(e.target.value)}
               onKeyDown={handleDraftKey}
               rows={5}
             />
-            <button className="refl-submit" onClick={handleSubmit} disabled={!draft.trim()}>Log ↵</button>
+            <button className="refl-submit" onClick={handleSubmit} disabled={!(current || '').trim()}>Log ↵</button>
           </div>
         )}
         {hasLogs && (
@@ -185,7 +166,7 @@ function ReflectionLog({ isToday, dayKey, entries, legacyText, onAdd, onDelete, 
           />
         )}
         <div className="nb-footer" style={{ padding: '8px 12px' }}>
-          <span className="nb-hint">{isToday ? 'Cmd+Enter to log' : 'Read-only — past day'}</span>
+          <span className="nb-hint">{isToday ? 'Saved as you type · Cmd+Enter to log' : 'Read-only — past day'}</span>
           <button className="nb-link" onClick={onArchive}>History →</button>
         </div>
       </div>
@@ -200,6 +181,7 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
   const [grateful, setGratefulState] = useState(() => getGrateful(viewDay).text || '');
   const [intentions, setIntentionsState] = useState(() => getIntentions(viewDay).text || '');
   const [reflectionData, setReflectionData] = useState(() => getReflection(viewDay));
+  const [reflCurrent, setReflCurrent] = useState(() => getReflection(viewDay).current || '');
 
   useEffect(() => {
     setGratefulState(getGrateful(viewDay).text || '');
@@ -207,8 +189,15 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
     setReflectionData(getReflection(viewDay));
   }, [viewDay, tick]);
 
+  // Reseed the present reflection only when the DAY changes, so an unrelated
+  // refresh (tick) never clobbers what's being typed.
+  useEffect(() => {
+    setReflCurrent(getReflection(viewDay).current || '');
+  }, [viewDay]);
+
   const gratefulTimer = useRef(null);
   const intentionsTimer = useRef(null);
+  const reflTimer = useRef(null);
 
   const handleGrateful = (val) => {
     setGratefulState(val);
@@ -221,7 +210,19 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
     intentionsTimer.current = setTimeout(() => { setIntentions(viewDay, val); refresh(); }, 400);
   };
 
-  const handleAddEntry    = (text) => { addReflectionEntry(viewDay, text); refresh(); };
+  // Save the present reflection to the record as you type (no refresh — keeps
+  // the textarea the source of truth while typing).
+  const handleReflCurrent = (val) => {
+    setReflCurrent(val);
+    clearTimeout(reflTimer.current);
+    reflTimer.current = setTimeout(() => { setReflectionCurrent(viewDay, val); }, 400);
+  };
+  const handleLogEntry = (text) => {
+    clearTimeout(reflTimer.current);     // cancel any pending current-save
+    addReflectionEntry(viewDay, text);   // moves current → entries, clears current
+    setReflCurrent('');                  // clear the box immediately
+    refresh();
+  };
   const handleDeleteEntry = (id)   => { deleteReflectionEntry(viewDay, id); refresh(); };
 
   return (
@@ -254,10 +255,11 @@ export default function DailyPage({ viewDay, refresh, tick, openArchive }) {
         <div id="section-reflections">
           <ReflectionLog
             isToday={isToday}
-            dayKey={viewDay}
+            current={reflCurrent}
+            onCurrentChange={handleReflCurrent}
             entries={reflectionData.entries || []}
             legacyText={reflectionData._legacyText}
-            onAdd={handleAddEntry}
+            onLog={handleLogEntry}
             onDelete={handleDeleteEntry}
             onArchive={() => openArchive('reflections')}
           />

@@ -295,10 +295,19 @@ export function setIntentions(dk, text) {
 // ── Reflection ────────────────────────────────────────────────────────────────
 export function getReflection(dk) {
   const doc = _cache.reflections[dk];
-  if (!doc) return { entries: [] };
-  if (doc.entries) return doc;
+  if (!doc) return { entries: [], current: '' };
+  if (doc.entries) return { current: '', ...doc };
   // Legacy doc: { text, savedAt } — surface as _legacyText, no entries
-  return { entries: [], _legacyText: doc.text };
+  return { entries: [], current: '', _legacyText: doc.text };
+}
+// The in-progress "present" reflection, saved to the record as you type.
+// Logging it (addReflectionEntry) moves it into entries and clears current.
+export function setReflectionCurrent(dk, text) {
+  const doc = _cache.reflections[dk] || { entries: [] };
+  const val = { entries: doc.entries || [], current: text, savedAt: Date.now() };
+  _cache.reflections[dk] = val;
+  _persistToLS();
+  _set(_userDoc('reflections', dk), clean(val));
 }
 export function getReflectionDays() {
   return Object.keys(_cache.reflections)
@@ -311,7 +320,7 @@ export function getReflectionDays() {
 export function addReflectionEntry(dk, text) {
   const doc = _cache.reflections[dk] || { entries: [] };
   const entries = [...(doc.entries || []), { id: crypto.randomUUID(), text, createdAt: Date.now() }];
-  const val = { entries, savedAt: Date.now() };
+  const val = { entries, current: '', savedAt: Date.now() }; // logging clears the present reflection
   _cache.reflections[dk] = val;
   _persistToLS();
   _set(_userDoc('reflections', dk), clean(val));
@@ -319,7 +328,7 @@ export function addReflectionEntry(dk, text) {
 export function deleteReflectionEntry(dk, id) {
   const doc = _cache.reflections[dk];
   if (!doc || !doc.entries) return;
-  const val = { entries: doc.entries.filter(e => e.id !== id), savedAt: Date.now() };
+  const val = { entries: doc.entries.filter(e => e.id !== id), current: doc.current || '', savedAt: Date.now() };
   _cache.reflections[dk] = val;
   _persistToLS();
   _set(_userDoc('reflections', dk), clean(val));
@@ -327,7 +336,7 @@ export function deleteReflectionEntry(dk, id) {
 export function updateReflectionEntry(dk, id, newText) {
   const doc = _cache.reflections[dk];
   if (!doc || !doc.entries) return;
-  const val = { entries: doc.entries.map(e => e.id === id ? { ...e, text: newText } : e), savedAt: Date.now() };
+  const val = { entries: doc.entries.map(e => e.id === id ? { ...e, text: newText } : e), current: doc.current || '', savedAt: Date.now() };
   _cache.reflections[dk] = val;
   _persistToLS();
   _set(_userDoc('reflections', dk), clean(val));
